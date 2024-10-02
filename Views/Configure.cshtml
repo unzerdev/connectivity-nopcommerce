@@ -1,0 +1,172 @@
+﻿@model ConfigurationModel
+@{
+    Layout = "_ConfigurePlugin";
+}
+
+@using Unzer.Plugin.Payments.Unzer.Models
+
+@await Component.InvokeAsync(typeof(StoreScopeConfigurationViewComponent))
+<form asp-controller="UnzerPayment" asp-action="Configure" method="post">
+    <div class="cards-group">
+        <div class="card card-default">
+            <div class="card-body">
+                <p>@T("Plugins.Payments.Unzer.Instructions")</p>
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-label asp-for="UnzerApiBaseUrl" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="UnzerApiBaseUrl" />
+                        <span asp-validation-for="UnzerApiBaseUrl"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-override-store-checkbox asp-for="UnzerApiKey_OverrideForStore" asp-input="UnzerApiKey" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                        <nop-label asp-for="UnzerApiKey" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="UnzerApiKey" />
+                        <span asp-validation-for="UnzerApiKey"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-override-store-checkbox asp-for="ShopUrl_OverrideForStore" asp-input="ShopUrl" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                        <nop-label asp-for="ShopUrl" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="ShopUrl" />
+                        <span asp-validation-for="ShopUrl"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-override-store-checkbox asp-for="LogoImage_OverrideForStore" asp-input="LogoImage" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                        <nop-label asp-for="LogoImage" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="LogoImage" />
+                        <span asp-validation-for="LogoImage"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-override-store-checkbox asp-for="ShopDescription_OverrideForStore" asp-input="ShopDescription" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                        <nop-label asp-for="ShopDescription" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="ShopDescription" />
+                        <span asp-validation-for="ShopDescription"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-override-store-checkbox asp-for="TagLine_OverrideForStore" asp-input="TagLine" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                        <nop-label asp-for="TagLine" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="TagLine" />
+                        <span asp-validation-for="TagLine"></span>
+                    </div>
+                </div>
+
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-label asp-for="SelectedPaymentTypes" />
+                    </div>
+
+                    <div class="col-md-9">
+                        <div class="input-group-append input-group-required">
+                            <div class="input-group">
+                                <nop-select asp-for="SelectedPaymentTypes" asp-items="Model.AvailablePaymentMethods" asp-multiple="true" />
+                            </div>
+                            <div class="input-group-btn">
+                                <nop-required />
+                            </div>
+                        </div>
+                        <script>
+                            $(function () {
+                                var paymentMethodsIdsInput = $('#@Html.IdFor(model => model.SelectedPaymentTypes)').select2({
+                                    closeOnSelect: false,
+                                    @if (!Model.AvailablePaymentMethods.Any())
+                                    {
+                                        <text>
+                                        disabled: true,
+                                        placeholder: 'No payment methods available',
+                                        </text>
+                                    }
+                                });
+                            });
+                        </script>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-override-store-checkbox asp-for="CurrencyCode_OverrideForStore" asp-input="CurrencyCode" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                        <nop-label asp-for="CurrencyCode" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="CurrencyCode" />
+                        <span asp-validation-for="CurrencyCode"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-override-store-checkbox asp-for="LogCallbackPostData_OverrideForStore" asp-input="LogCallbackPostData" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                        <nop-label asp-for="LogCallbackPostData" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="LogCallbackPostData" />
+                        <span asp-validation-for="LogCallbackPostData"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-override-store-checkbox asp-for="SkipPaymentInfo_OverrideForStore" asp-input="SkipPaymentInfo" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                        <nop-label asp-for="SkipPaymentInfo" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="SkipPaymentInfo" />
+                        <span asp-validation-for="SkipPaymentInfo"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-override-store-checkbox asp-for="SendOrderConfirmOnAuthorized_OverrideForStore" asp-input="SendOrderConfirmOnAuthorized" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                        <nop-label asp-for="SendOrderConfirmOnAuthorized" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="SendOrderConfirmOnAuthorized" />
+                        <span asp-validation-for="SendOrderConfirmOnAuthorized"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-override-store-checkbox asp-for="AutoCapture_OverrideForStore" asp-input="AutoCapture" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                        <nop-label asp-for="AutoCapture" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-select asp-for="AutoCapture" asp-items="Model.AutoCaptureOptions" />
+                        <span asp-validation-for="AutoCapture"></span>
+                    </div>
+                </div>
+                 <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-override-store-checkbox asp-for="AdditionalFeePercentage_OverrideForStore" asp-input="AdditionalFeePercentage" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                        <nop-label asp-for="AdditionalFeePercentage" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="AdditionalFeePercentage" />
+                        <span asp-validation-for="AdditionalFeePercentage"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-9 offset-md-3">
+                        <button type="submit" name="save" class="btn btn-primary">@T("Admin.Common.Save")</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>

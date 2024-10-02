@@ -1,0 +1,13 @@
+{
+  "event": "payment.completed",
+  "publicKey": "s-pub-2a10jWXFKD0PAtXiRf9RVp7uTjp3PQzz",
+  "retrieveUrl": "https://sbx-api.heidelpay.com/v1/payments/s-pay-30",
+  "paymentId": "s-pay-30"
+}
+
+{
+  "event": "payment.canceled",
+  "publicKey": "s-pub-2a10jWXFKD0PAtXiRf9RVp7uTjp3PQzz",
+  "retrieveUrl": "https://sbx-api.heidelpay.com/v1/payments/s-pay-30",
+  "paymentId": "s-pay-30"
+}

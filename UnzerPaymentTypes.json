@@ -1,0 +1,194 @@
+﻿[
+  {
+    "Name": "Alipay",
+    "ShortName": "ali",
+    "SystemName": "alipay",
+    "SupportAuthurize": false,
+    "SupportCharge": true,
+    "Deprecated": false
+  },
+  {
+    "Name": "Apple Pay",
+    "ShortName": "apl",
+    "SystemName": "applepay",
+    "SupportAuthurize": true,
+    "SupportCharge": true,
+    "Deprecated": false
+  },
+  {
+    "Name": "Bancontact",
+    "ShortName": "bct",
+    "SystemName": "bancontact",
+    "SupportAuthurize": false,
+    "SupportCharge": true,
+    "Deprecated": false
+  },
+  {
+    "Name": "Card",
+    "ShortName": "crd",
+    "SystemName": "card",
+    "SupportAuthurize": true,
+    "SupportCharge": true,
+    "Deprecated": false
+  },
+  {
+    "Name": "EPS",
+    "ShortName": "eps",
+    "SystemName": "EPS",
+    "SupportAuthurize": false,
+    "SupportCharge": true,
+    "Deprecated": false
+  },
+  {
+    "Name": "Google Pay",
+    "ShortName": "gop",
+    "SystemName": "googlepay",
+    "SupportAuthurize": true,
+    "SupportCharge": true,
+    "Deprecated": false
+  },
+  {
+    "Name": "iDEAL",
+    "ShortName": "idl",
+    "SystemName": "ideal",
+    "SupportAuthurize": false,
+    "SupportCharge": true,
+    "Deprecated": false
+  },
+  {
+    "Name": "Klarna",
+    "ShortName": "kla",
+    "SystemName": "klarna",
+    "SupportAuthurize": true,
+    "SupportCharge": false,
+    "Deprecated": false
+  },
+  {
+    "Name": "PayPal",
+    "ShortName": "ppl",
+    "SystemName": "paypal",
+    "SupportAuthurize": true,
+    "SupportCharge": true,
+    "Deprecated": false
+  },
+  {
+    "Name": "PayU",
+    "ShortName": "pyu",
+    "SystemName": "payu",
+    "SupportAuthurize": false,
+    "SupportCharge": true,
+    "Deprecated": false
+  },
+  {
+    "Name": "Przelewy24",
+    "ShortName": "p24",
+    "SystemName": "przelewy24",
+    "SupportAuthurize": false,
+    "SupportCharge": true,
+    "Deprecated": false
+  },
+  {
+    "Name": "PostFinance card",
+    "ShortName": "pfc",
+    "SystemName": "post-finance-card",
+    "SupportAuthurize": false,
+    "SupportCharge": true,
+    "Deprecated": false
+  },
+  {
+    "Name": "PostFinance eFinance",
+    "ShortName": "pfe",
+    "SystemName": "post-finance-efinance",
+    "SupportAuthurize": false,
+    "SupportCharge": true,
+    "Deprecated": false
+  },
+  {
+    "Name": "Sofort",
+    "ShortName": "sft",
+    "SystemName": "sofort",
+    "SupportAuthurize": false,
+    "SupportCharge": true,
+    "Deprecated": false
+  },
+  {
+    "Name": "TWINT",
+    "ShortName": "twt",
+    "SystemName": "twint",
+    "SupportAuthurize": false,
+    "SupportCharge": true,
+    "Deprecated": false
+  },
+  {
+    "Name": "Unzer Direct Debit",
+    "ShortName": "sdd",
+    "SystemName": "sepa-direct-debit",
+    "SupportAuthurize": false,
+    "SupportCharge": true,
+    "Deprecated": false
+  },
+  {
+    "Name": "Direct Debit Secured",
+    "ShortName": "pdd",
+    "SystemName": "paylater-direct-debit",
+    "SupportAuthurize": true,
+    "SupportCharge": false,
+    "Deprecated": false
+  },
+  {
+    "Name": "Unzer Installment",
+    "ShortName": "pit",
+    "SystemName": "paylater-installment",
+    "SupportAuthurize": true,
+    "SupportCharge": false,
+    "Deprecated": false
+  },
+  {
+    "Name": "Unzer Invoice",
+    "ShortName": "piv",
+    "SystemName": "paylater-invoice",
+    "SupportAuthurize": true,
+    "SupportCharge": false,
+    "Deprecated": false
+  },
+  {
+    "Name": "Unzer Prepayment",
+    "ShortName": "ppy",
+    "SystemName": "prepayment",
+    "SupportAuthurize": false,
+    "SupportCharge": true,
+    "Deprecated": false
+  },
+  {
+    "Name": "WeChat Pay",
+    "ShortName": "wcp",
+    "SystemName": "wechatpay",
+    "SupportAuthurize": false,
+    "SupportCharge": true,
+    "Deprecated": false
+  },
+  {
+    "Name": "Direct Debit Secured",
+    "ShortName": "pdd",
+    "SystemName": "sepa-direct-debit-secured",
+    "SupportAuthurize": false,
+    "SupportCharge": true,
+    "Deprecated": true
+  },
+  {
+    "Name": "Unzer Installment",
+    "ShortName": "pit",
+    "SystemName": "installment-secured",
+    "SupportAuthurize": false,
+    "SupportCharge": true,
+    "Deprecated": true
+  },
+  {
+    "Name": "Unzer Invoice",
+    "ShortName": "piv",
+    "SystemName": "invoice-secured",
+    "SupportAuthurize": false,
+    "SupportCharge": true,
+    "Deprecated": true
+  }
+]

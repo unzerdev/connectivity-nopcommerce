@@ -1,0 +1,195 @@
+﻿Charge Page with link
+{
+    "id": "s-ppg-2189f50351d78d65c7740ff24719b964b98a58553ea5364ec090d4a09d433fd4",
+    "redirectUrl": "https://sbx-payment.unzer.com/v1/paypage/s-ppg-2189f50351d78d65c7740ff24719b964b98a58553ea5364ec090d4a09d433fd4",
+    "amount": "100.0000",
+    "currency": "EUR",
+    "returnUrl": "https://www.unzer.com",
+    "logoImage": "https://insights.unzer.com/static/unzerLogo.svg",
+    "fullPageImage": "",
+    "shopName": "Any shop name",
+    "shopDescription": "",
+    "tagline": "Any tagline",
+    "css": {},
+    "orderId": "Order-21",
+    "termsAndConditionUrl": "",
+    "privacyPolicyUrl": "",
+    "paymentReference": "",
+    "impressumUrl": "",
+    "imprintUrl": "",
+    "helpUrl": "",
+    "contactUrl": "",
+    "invoiceId": "shop-invoice-id",
+    "card3ds": true,
+    "billingAddressRequired": "false",
+    "shippingAddressRequired": "false",
+    "additionalAttributes": {
+        "recurrenceType": "scheduled"
+    },
+    "resources": {
+        "paymentId": "s-pay-41",
+        "customerId": "",
+        "basketId": "",
+        "metadataId": ""
+    },
+    "action": "CHARGE"
+}
+Events:
+2024-08-28 18:12:44 UTC
+{
+  "event": "charge.pending",
+  "publicKey": "s-pub-2a10jWXFKD0PAtXiRf9RVp7uTjp3PQzz",
+  "retrieveUrl": "https://sbx-api.heidelpay.com/v1/payments/s-pay-41/charges/s-chg-1",
+  "paymentId": "s-pay-41"
+}
+2024-08-28 18:12:44 UTC
+{
+  "event": "payment.pending",
+  "publicKey": "s-pub-2a10jWXFKD0PAtXiRf9RVp7uTjp3PQzz",
+  "retrieveUrl": "https://sbx-api.heidelpay.com/v1/payments/s-pay-41",
+  "paymentId": "s-pay-41"
+}
+2024-08-28 18:12:53 UTC
+{
+  "event": "charge.succeeded",
+  "publicKey": "s-pub-2a10jWXFKD0PAtXiRf9RVp7uTjp3PQzz",
+  "retrieveUrl": "https://sbx-api.heidelpay.com/v1/payments/s-pay-41/charges/s-chg-1",
+  "paymentId": "s-pay-41"
+}
+2024-08-28 18:12:53 UTC
+{
+  "event": "payment.completed",
+  "publicKey": "s-pub-2a10jWXFKD0PAtXiRf9RVp7uTjp3PQzz",
+  "retrieveUrl": "https://sbx-api.heidelpay.com/v1/payments/s-pay-41",
+  "paymentId": "s-pay-41"
+}
+2024-08-28 18:13:28 UTC
+{
+  "event": "charge.succeeded",
+  "publicKey": "s-pub-2a10jWXFKD0PAtXiRf9RVp7uTjp3PQzz",
+  "retrieveUrl": "https://sbx-api.heidelpay.com/v1/payments/s-pay-41/charges/s-chg-1",
+  "paymentId": "s-pay-41"
+}
+2024-08-28 18:13:28 UTC
+{
+  "event": "payment.completed",
+  "publicKey": "s-pub-2a10jWXFKD0PAtXiRf9RVp7uTjp3PQzz",
+  "retrieveUrl": "https://sbx-api.heidelpay.com/v1/payments/s-pay-41",
+  "paymentId": "s-pay-41"
+}
+
+https://api.unzer.com/v1/payments/s-pay-41
+Payment s-pay-41
+{
+    "id": "s-pay-41",
+    "state": {
+        "id": 1,
+        "name": "completed"
+    },
+    "amount": {
+        "total": "100.0000",
+        "charged": "100.0000",
+        "canceled": "0.0000",
+        "remaining": "0.0000"
+    },
+    "currency": "EUR",
+    "orderId": "Order-21",
+    "invoiceId": "shop-invoice-id",
+    "resources": {
+        "customerId": "",
+        "paymentId": "s-pay-41",
+        "basketId": "",
+        "metadataId": "",
+        "payPageId": "s-ppg-2189f50351d78d65c7740ff24719b964b98a58553ea5364ec090d4a09d433fd4",
+        "traceId": "993051bf8a7fe79609d01b0d4769d236",
+        "typeId": "s-crd-ijgfgmztpczw"
+    },
+    "transactions": [
+        {
+            "date": "2024-08-28 18:12:43",
+            "type": "charge",
+            "status": "success",
+            "url": "https://api.unzer.com/v1/payments/s-pay-41/charges/s-chg-1",
+            "amount": "100.0000",
+            "additionalTransactionData": {
+                "card": {
+                    "recurrenceType": "scheduled"
+                }
+            }
+        }
+    ]
+}
+
+https://api.unzer.com/v1/payments/s-pay-41/authorize/s-aut-1
+Authorized
+{
+    "id": "s-err-f284e62b5d6a4a01af627637ff6",
+    "isSuccess": false,
+    "isPending": false,
+    "isResumed": false,
+    "isError": true,
+    "url": "https://api.unzer.com/v1/payments/s-pay-41/authorize/s-aut-1",
+    "timestamp": "2024-08-28 18:18:22",
+    "traceId": "993051bf8a7fe79609d01b0d4769d236",
+    "errors": [
+        {
+            "code": "API.320.100.004",
+            "merchantMessage": "Transaction not found for id s-aut-1",
+            "customerMessage": "Transaction not found. Please contact us for more information."
+        }
+    ]
+}
+
+https://api.unzer.com/v1/payments/charges
+Sub Payment Charges s-crd-ijgfgmztpczw
+{
+    "id": "s-chg-1",
+    "isSuccess": true,
+    "isPending": false,
+    "isResumed": false,
+    "isError": false,
+    "card3ds": false,
+    "redirectUrl": "",
+    "message": {
+        "code": "COR.000.100.112",
+        "merchant": "Request successfully processed in 'Merchant in Connector Test Mode'",
+        "customer": "Your payments have been successfully processed in sandbox mode."
+    },
+    "amount": "100.0000",
+    "currency": "EUR",
+    "returnUrl": "https://www.unzer.com/de/kassenloesungen/",
+    "date": "2024-08-28 18:21:24",
+    "resources": {
+        "paymentId": "s-pay-42",
+        "traceId": "e6e10d56e77bc42320b9ce4ee8cae162",
+        "typeId": "s-crd-ijgfgmztpczw"
+    },
+    "additionalTransactionData": {
+        "card": {
+            "recurrenceType": "scheduled"
+        }
+    },
+    "paymentReference": "",
+    "processing": {
+        "uniqueId": "31HA07BC8164445705EB679FFD173C75",
+        "shortId": "5887.9568.1323",
+        "traceId": "e6e10d56e77bc42320b9ce4ee8cae162"
+    }
+}
+
+Events:
+2024-08-28 18:21:24 UTC
+{
+  "event": "charge.succeeded",
+  "publicKey": "s-pub-2a10jWXFKD0PAtXiRf9RVp7uTjp3PQzz",
+  "retrieveUrl": "https://sbx-api.heidelpay.com/v1/payments/s-pay-42/charges/s-chg-1",
+  "paymentId": "s-pay-42"
+}
+2024-08-28 18:21:24 UTC
+{
+  "event": "payment.completed",
+  "publicKey": "s-pub-2a10jWXFKD0PAtXiRf9RVp7uTjp3PQzz",
+  "retrieveUrl": "https://sbx-api.heidelpay.com/v1/payments/s-pay-42",
+  "paymentId": "s-pay-42"
+}
+

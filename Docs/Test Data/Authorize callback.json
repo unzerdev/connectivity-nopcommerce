@@ -1,0 +1,31 @@
+//1.
+{
+  "event": "authorize.pending",
+  "publicKey": "s-pub-2a10jWXFKD0PAtXiRf9RVp7uTjp3PQzz",
+  "retrieveUrl": "https://sbx-api.heidelpay.com/v1/payments/s-pay-25/authorize/s-aut-1",
+  "paymentId": "s-pay-25"
+}
+
+//2.
+{
+  "event": "authorize.succeeded",
+  "publicKey": "s-pub-2a10jWXFKD0PAtXiRf9RVp7uTjp3PQzz",
+  "retrieveUrl": "https://sbx-api.heidelpay.com/v1/payments/s-pay-25/authorize/s-aut-1",
+  "paymentId": "s-pay-25"
+}
+
+//2024-08-25 08:34:44 UTC
+{
+  "event": "authorize.pending",
+  "publicKey": "s-pub-2a10jWXFKD0PAtXiRf9RVp7uTjp3PQzz",
+  "retrieveUrl": "https://sbx-api.heidelpay.com/v1/payments/s-pay-28/authorize/s-aut-1",
+  "paymentId": "s-pay-28"
+}
+
+2024-08-25 08:34:53 UTC
+{
+  "event": "authorize.succeeded",
+  "publicKey": "s-pub-2a10jWXFKD0PAtXiRf9RVp7uTjp3PQzz",
+  "retrieveUrl": "https://sbx-api.heidelpay.com/v1/payments/s-pay-28/authorize/s-aut-1",
+  "paymentId": "s-pay-28"
+}

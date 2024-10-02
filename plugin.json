@@ -1,0 +1,11 @@
+﻿{
+  "Group": "Payment methods",
+  "FriendlyName": "Unzer Payments",
+  "SystemName": "Payments.Unzer",
+  "Version": "1.00.0",
+  "SupportedVersions": [ "4.70" ],
+  "Author": "Objecta Data",
+  "DisplayOrder": 1,
+  "FileName": "Unzer.Plugin.Payments.Unzer.dll",
+  "Description": "This plugin enables the Unzer payment methods in the store"
+}

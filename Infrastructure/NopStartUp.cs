@@ -1,0 +1,31 @@
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Nop.Core.Infrastructure;
+using Nop.Services.Orders;
+using Nop.Services.Payments;
+using Nop.Web.Framework.Infrastructure.Extensions;
+using Unzer.Plugin.Payments.Unzer.Services;
+
+namespace Unzer.Plugin.Payments.Unzer.Infrastructure
+{
+    public class NopStartUp : INopStartup
+    {
+        public int Order => 20000;
+
+        public void Configure(IApplicationBuilder application)
+        {
+        }
+
+        public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddHttpClient<UnzerApiHttpClient>().WithProxy();
+            services.AddScoped<IUnzerApiService, UnzerApiService>();
+            services.AddScoped<ICallEventHandler<AuthorizeEventHandler>, AuthorizeEventHandler>();
+            services.AddScoped<ICallEventHandler<CaptureEventHandler>, CaptureEventHandler>();
+            services.AddScoped<UnzerPaymentRequestBuilder>();
+            services.AddScoped<IOrderProcessingService, DelayedPlaceOrderProcessingService>();
+            services.AddScoped<IPaymentPluginManager, UnzerPaymentPluginManager>();
+        }
+    }
+}
