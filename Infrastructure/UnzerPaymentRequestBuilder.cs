@@ -72,6 +72,7 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
             if (selectedPaymentBlocks.Count() > 2)
             {
                 selectedPaymentMethod = selectedPaymentBlocks.Last().ToLower();
+                selectedPaymentMethod = UnzerPaymentDefaults.MapPaymentType(selectedPaymentMethod);
             }
 
             var customer = await _customerService.GetCustomerByIdAsync(order.CustomerId);
@@ -126,6 +127,7 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
             if (selectedPaymentBlocks.Count() > 2)
             {
                 selectedPaymentMethod = selectedPaymentBlocks.Last().ToLower();
+                selectedPaymentMethod = UnzerPaymentDefaults.MapPaymentType(selectedPaymentMethod);
             }
 
             var customer = await _customerService.GetCustomerByIdAsync(order.CustomerId);
