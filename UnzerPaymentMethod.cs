@@ -485,7 +485,7 @@ namespace Unzer.Plugin.Payments.Unzer
                     return unserCustomerId;
                 }
 
-                unserCustomerId = custFoundResult.ResponseId;
+                unserCustomerId = custCreate.ResponseId;
             }
             else if(custFoundResult.Success && !string.IsNullOrEmpty(custFoundResult.ResponseId))
             {
@@ -496,7 +496,7 @@ namespace Unzer.Plugin.Payments.Unzer
                     return unserCustomerId;
                 }
 
-                unserCustomerId = custFoundResult.ResponseId;
+                unserCustomerId = updCreate.ResponseId;
             }
 
             return unserCustomerId;
