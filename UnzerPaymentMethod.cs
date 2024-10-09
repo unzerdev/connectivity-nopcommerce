@@ -132,7 +132,7 @@ namespace Unzer.Plugin.Payments.Unzer
             }
             else if(unzerPaymentType.SupportAuthurize)
             {
-                var payRespons = await _unzerApiService.CreateAuthPayment(order, isRecurring, unzerCustomerId,unzerBasketID);
+                var payRespons = await _unzerApiService.CreateAuthPayment(order, isRecurring, unzerCustomerId, unzerBasketID);
 
                 if (!payRespons.Success)
                 {
@@ -305,7 +305,7 @@ namespace Unzer.Plugin.Payments.Unzer
                 ["Enums.Unzer.Plugin.Payments.Unzer.AutoCapture.OnAuthForDownloadableProduct"] = "Ordee with e-products",
                 ["Enums.Unzer.Plugin.Payments.Unzer.AutoCapture.OnAuthForNoneDeliverProduct"] = "Order with none shipable product(s)",
 
-                ["Plugins.Payments.Unzer.Instructions"] = "< Unzer Payment Configuration >",
+                ["Plugins.Payments.Unzer.Instructions"] = "Configure - Unzer Payments",
 
                 ["Plugins.Payments.Unzer.Configuration.Webhook.Warning"] = "Callback webhooks could not be created, please try to reconfigure",
                 ["Plugins.Payments.Unzer.Configuration.KeyPair.Warning"] = "Keypair information could not be retrieved from API, please try to reconfigure",
@@ -473,7 +473,7 @@ namespace Unzer.Plugin.Payments.Unzer
             var unserCustomerId = string.Empty;
             var customer = await _customerService.GetCustomerByIdAsync(order.CustomerId);
             var billingAddress = await _addressService.GetAddressByIdAsync(order.BillingAddressId);
-            var shippingAddress = await _addressService.GetAddressByIdAsync(order.BillingAddressId);
+            var shippingAddress = await _addressService.GetAddressByIdAsync(order.ShippingAddressId.Value);
 
             var custFoundResult = await _unzerApiService.GetCustomer(customer.CustomerGuid.ToString());
             if(!custFoundResult.Success)
@@ -505,7 +505,6 @@ namespace Unzer.Plugin.Payments.Unzer
         private async Task<string> PrepareBasketForPaymentAsync(Order order)
         {
             var unzerBasketId = string.Empty;
-            var orderItems = await _orderService.GetOrderItemByIdAsync(order.Id);
 
             var basketCreate = await _unzerApiService.CreateBasket(order);
             if (!basketCreate.Success)

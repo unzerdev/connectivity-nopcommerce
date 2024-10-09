@@ -67,17 +67,11 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
                 orderTotal = Math.Round(orderTotal, 2);
             }
 
-            var selectedPaymentMethod = order.PaymentMethodSystemName;
-            var selectedPaymentBlocks = order.PaymentMethodSystemName.Split('.');
-            if (selectedPaymentBlocks.Count() > 2)
-            {
-                selectedPaymentMethod = selectedPaymentBlocks.Last().ToLower();
-                selectedPaymentMethod = UnzerPaymentDefaults.MapPaymentType(selectedPaymentMethod);
-            }
+            var unzerPaymentType = UnzerPaymentDefaults.ReadUnzerPaymentType(order.PaymentMethodSystemName);
+            var selectedPaymentMethod = unzerPaymentType != null ? unzerPaymentType.UnzerName : order.PaymentMethodSystemName;
 
             var customer = await _customerService.GetCustomerByIdAsync(order.CustomerId);
             var excludeTypes = _unzerPaymentSettings.SelectedPaymentTypes.Count > 1 ? _unzerPaymentSettings.AvailablePaymentTypes.Where(t => t != selectedPaymentMethod).ToArray() : new string[0];
-            //var excludeTypes = _unzerPaymentSettings.SelectedPaymentTypes.Count > 1 ? _unzerPaymentSettings.AvailablePaymentTypes.Except(_unzerPaymentSettings.SelectedPaymentTypes).ToArray() : new string[0];
 
             var authReq = new CreateAuthorizePayPageRequest
             {
@@ -98,7 +92,7 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
                     metadataId = _unzerPaymentSettings.UnzerMetadataId,                    
                     basketId = !string.IsNullOrEmpty(basketId) ? basketId : null
                 }                
-            };
+            };       
 
             return authReq;
         }
@@ -122,17 +116,11 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
                 orderTotal = Math.Round(orderTotal, 2);
             }
 
-            var selectedPaymentMethod = order.PaymentMethodSystemName;
-            var selectedPaymentBlocks = order.PaymentMethodSystemName.Split('.');
-            if (selectedPaymentBlocks.Count() > 2)
-            {
-                selectedPaymentMethod = selectedPaymentBlocks.Last().ToLower();
-                selectedPaymentMethod = UnzerPaymentDefaults.MapPaymentType(selectedPaymentMethod);
-            }
+            var unzerPaymentType = UnzerPaymentDefaults.ReadUnzerPaymentType(order.PaymentMethodSystemName);
+            var selectedPaymentMethod = unzerPaymentType != null ? unzerPaymentType.UnzerName : order.PaymentMethodSystemName;
 
             var customer = await _customerService.GetCustomerByIdAsync(order.CustomerId);
             var excludeTypes = _unzerPaymentSettings.SelectedPaymentTypes.Count > 1 ? _unzerPaymentSettings.AvailablePaymentTypes.Where(t => t != selectedPaymentMethod).ToArray() : new string[0];
-            //var excludeTypes = _unzerPaymentSettings.SelectedPaymentTypes.Count > 1 ? _unzerPaymentSettings.AvailablePaymentTypes.Except(_unzerPaymentSettings.SelectedPaymentTypes).ToArray() : new string[0];
 
             var authReq = new CreateCapturePayPageRequest
             {

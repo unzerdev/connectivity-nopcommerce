@@ -42,7 +42,7 @@ public class CaptureEventHandler : ICallEventHandler<CaptureEventHandler>
         if (nopOrder == null)
             throw new NopException($"Order {paymentCapt.orderId} for payment {eventPayload.paymentId} could not be found");
 
-        if (eventPayload.Event == "charge.succeeded" && nopOrder.PaymentStatus == Nop.Core.Domain.Payments.PaymentStatus.Paid)
+        if (eventPayload.Event == "charge.succeeded" && nopOrder.PaymentStatus == PaymentStatus.Paid)
             return;
 
         if (paymentCapt.IsError)

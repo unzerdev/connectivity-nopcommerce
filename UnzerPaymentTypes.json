@@ -2,55 +2,68 @@
   {
     "Name": "Alipay",
     "ShortName": "ali",
-    "SystemName": "alipay",
+    "SystemName": "Payments.Unzer.alipay",
+    "UnzerName": "alipay",
     "SupportAuthurize": false,
     "SupportCharge": true,
-    "Deprecated": false
+    "Deprecated": false,
+    "Prepayment": false
   },
   {
     "Name": "Apple Pay",
     "ShortName": "apl",
-    "SystemName": "applepay",
+    "SystemName": "Payments.Unzer.applepay",
+    "UnzerName": "applepay",
     "SupportAuthurize": true,
     "SupportCharge": true,
-    "Deprecated": false
+    "Deprecated": false,
+    "Prepayment": false
   },
   {
     "Name": "Bancontact",
     "ShortName": "bct",
-    "SystemName": "bancontact",
+    "SystemName": "Payments.Unzer.bancontact",
+    "UnzerName": "bancontact",
     "SupportAuthurize": false,
     "SupportCharge": true,
-    "Deprecated": false
+    "Deprecated": false,
+    "Prepayment": false
   },
   {
     "Name": "Card",
     "ShortName": "crd",
-    "SystemName": "card",
+    "SystemName": "Payments.Unzer.card",
+    "UnzerName": "card",
     "SupportAuthurize": true,
     "SupportCharge": true,
-    "Deprecated": false
+    "Deprecated": false,
+    "Prepayment": false
   },
   {
     "Name": "EPS",
     "ShortName": "eps",
-    "SystemName": "EPS",
+    "SystemName": "Payments.Unzer.EPS",
+    "UnzerName": "EPS",
     "SupportAuthurize": false,
     "SupportCharge": true,
-    "Deprecated": false
+    "Deprecated": false,
+    "Prepayment": false
   },
   {
     "Name": "Google Pay",
     "ShortName": "gop",
-    "SystemName": "googlepay",
+    "SystemName": "Payments.Unzer.googlepay",
+    "UnzerName": "googlepay",
     "SupportAuthurize": true,
     "SupportCharge": true,
-    "Deprecated": false
+    "Deprecated": false,
+    "Prepayment": false
   },
   {
     "Name": "iDEAL",
     "ShortName": "idl",
-    "SystemName": "ideal",
+    "SystemName": "Payments.Unzer.ideal",
+    "UnzerName": "ideal",
     "SupportAuthurize": false,
     "SupportCharge": true,
     "Deprecated": false
@@ -58,137 +71,171 @@
   {
     "Name": "Klarna",
     "ShortName": "kla",
-    "SystemName": "klarna",
+    "SystemName": "Payments.Unzer.klarna",
+    "UnzerName": "klarna",
     "SupportAuthurize": true,
     "SupportCharge": false,
-    "Deprecated": false
+    "Deprecated": false,
+    "Prepayment": false
   },
   {
     "Name": "PayPal",
     "ShortName": "ppl",
-    "SystemName": "paypal",
+    "SystemName": "Payments.Unzer.paypal",
+    "UnzerName": "paypal",
     "SupportAuthurize": true,
     "SupportCharge": true,
-    "Deprecated": false
+    "Deprecated": false,
+    "Prepayment": false
   },
   {
     "Name": "PayU",
     "ShortName": "pyu",
-    "SystemName": "payu",
+    "SystemName": "Payments.Unzer.payu",
+    "UnzerName": "payu",
     "SupportAuthurize": false,
     "SupportCharge": true,
-    "Deprecated": false
+    "Deprecated": false,
+    "Prepayment": false
   },
   {
     "Name": "Przelewy24",
     "ShortName": "p24",
-    "SystemName": "przelewy24",
+    "SystemName": "Payments.Unzer.przelewy24",
+    "UnzerName": "przelewy24",
     "SupportAuthurize": false,
     "SupportCharge": true,
-    "Deprecated": false
+    "Deprecated": false,
+    "Prepayment": false
   },
   {
     "Name": "PostFinance card",
     "ShortName": "pfc",
-    "SystemName": "post-finance-card",
+    "SystemName": "Payments.Unzer.post-finance-card",
+    "UnzerName": "post-finance-card",
     "SupportAuthurize": false,
     "SupportCharge": true,
-    "Deprecated": false
+    "Deprecated": false,
+    "Prepayment": false
   },
   {
     "Name": "PostFinance eFinance",
     "ShortName": "pfe",
-    "SystemName": "post-finance-efinance",
+    "SystemName": "Payments.Unzer.post-finance-efinance",
+    "UnzerName": "post-finance-efinance",
     "SupportAuthurize": false,
     "SupportCharge": true,
-    "Deprecated": false
+    "Deprecated": false,
+    "Prepayment": false
   },
   {
     "Name": "Sofort",
     "ShortName": "sft",
-    "SystemName": "sofort",
+    "SystemName": "Payments.Unzer.sofort",
+    "UnzerName": "sofort",
     "SupportAuthurize": false,
     "SupportCharge": true,
-    "Deprecated": false
+    "Deprecated": false,
+    "Prepayment": false
   },
   {
     "Name": "TWINT",
     "ShortName": "twt",
-    "SystemName": "twint",
+    "SystemName": "Payments.Unzer.twint",
+    "UnzerName": "twint",
     "SupportAuthurize": false,
     "SupportCharge": true,
-    "Deprecated": false
+    "Deprecated": false,
+    "Prepayment": false
   },
   {
     "Name": "Unzer Direct Debit",
     "ShortName": "sdd",
-    "SystemName": "sepa-direct-debit",
+    "SystemName": "Payments.Unzer.sepa-direct-debit",
+    "UnzerName": "sepa-direct-debit",
     "SupportAuthurize": false,
     "SupportCharge": true,
-    "Deprecated": false
+    "Deprecated": false,
+    "Prepayment": false
   },
   {
     "Name": "Direct Debit Secured",
     "ShortName": "pdd",
-    "SystemName": "paylater-direct-debit",
+    "SystemName": "Payments.Unzer.paylater-direct-debit",
+    "UnzerName": "paylater-direct-debit",
     "SupportAuthurize": true,
     "SupportCharge": false,
-    "Deprecated": false
+    "Deprecated": false,
+    "Prepayment": false
   },
   {
     "Name": "Unzer Installment",
     "ShortName": "pit",
-    "SystemName": "paylater-installment",
+    "SystemName": "Payments.Unzer.paylater-installment",
+    "UnzerName": "paylater-installment",
     "SupportAuthurize": true,
     "SupportCharge": false,
-    "Deprecated": false
+    "Deprecated": false,
+    "Prepayment": false
   },
   {
     "Name": "Unzer Invoice",
     "ShortName": "piv",
-    "SystemName": "paylater-invoice",
+    "SystemName": "Payments.Unzer.paylater-invoice",
+    "UnzerName": "applepay",
     "SupportAuthurize": true,
     "SupportCharge": false,
-    "Deprecated": false
+    "Deprecated": false,
+    "Prepayment": false
   },
   {
     "Name": "Unzer Prepayment",
     "ShortName": "ppy",
-    "SystemName": "prepayment",
+    "SystemName": "Payments.Unzer.prepayment",
+    "UnzerName": "prepayment",
     "SupportAuthurize": false,
     "SupportCharge": true,
-    "Deprecated": false
+    "Deprecated": false,
+    "Prepayment": true
   },
   {
     "Name": "WeChat Pay",
     "ShortName": "wcp",
-    "SystemName": "wechatpay",
+    "SystemName": "Payments.Unzer.wechatpay",
+    "UnzerName": "wechatpay",
     "SupportAuthurize": false,
     "SupportCharge": true,
-    "Deprecated": false
+    "Deprecated": false,
+    "Prepayment": false
   },
   {
     "Name": "Direct Debit Secured",
     "ShortName": "pdd",
-    "SystemName": "sepa-direct-debit-secured",
+    "SystemName": "Payments.Unzer.sepa-direct-debit-secured",
+    "UnzerName": "sepa-direct-debit-secured",
     "SupportAuthurize": false,
     "SupportCharge": true,
-    "Deprecated": true
+    "Deprecated": true,
+    "Prepayment": false
   },
   {
     "Name": "Unzer Installment",
     "ShortName": "pit",
-    "SystemName": "installment-secured",
+    "SystemName": "Payments.Unzer.installment-secured",
+    "UnzerName": "installment-secured",
     "SupportAuthurize": false,
     "SupportCharge": true,
-    "Deprecated": true
+    "Deprecated": true,
+    "Prepayment": false
   },
   {
     "Name": "Unzer Invoice",
     "ShortName": "piv",
-    "SystemName": "invoice-secured",
+    "SystemName": "Payments.Unzer.invoice-secured",
+    "UnzerName": "invoice-secured",
     "SupportAuthurize": false,
     "SupportCharge": true,
-    "Deprecated": true
+    "Deprecated": true,
+    "Prepayment": false
   }
 ]

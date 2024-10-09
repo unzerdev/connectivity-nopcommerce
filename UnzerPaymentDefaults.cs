@@ -49,7 +49,7 @@ namespace Unzer.Plugin.Payments.Unzer
         {
             string mappedTypeName = paymentType;
 
-            var anyType = UnzerPaymentTypes.SingleOrDefault(t => t.SystemName == paymentType);
+            var anyType = UnzerPaymentTypes.SingleOrDefault(t => t.UnzerName == paymentType);
             if (anyType == null)
                 return mappedTypeName;
 
@@ -60,8 +60,8 @@ namespace Unzer.Plugin.Payments.Unzer
 
         public static UnzerPaymentType ReadUnzerPaymentType(string paymentSystemName)
         {
-            var paymentNameParts = paymentSystemName.Split('.');
-            if(paymentNameParts.Length <= 2)
+            var unzerPaymentType = UnzerPaymentTypes.SingleOrDefault(t => t.SystemName == paymentSystemName);
+            if (unzerPaymentType == null)
             {
                 return new UnzerPaymentType
                 {
@@ -74,7 +74,7 @@ namespace Unzer.Plugin.Payments.Unzer
                 };
             }                
 
-            return UnzerPaymentTypes.SingleOrDefault(t => t.SystemName == paymentNameParts.Last());
+            return unzerPaymentType;
         }
     }
 }

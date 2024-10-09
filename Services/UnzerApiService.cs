@@ -66,7 +66,7 @@ namespace Unzer.Plugin.Payments.Unzer.Services
         public async Task<CreatePaymentResponse> CreateCapturePayment(Order order, bool isRecurring, string unzerCustomerId, string basketId)
         {
             var status = new CreatePaymentResponse { Success = false, StatusMessage = string.Empty };
-            var authPayPageReq = await _unzerPayRequestBuilder.BuildCapturePayPageRequestAsync(order, isRecurring, unzerCustomerId, string.Empty);
+            var authPayPageReq = await _unzerPayRequestBuilder.BuildCapturePayPageRequestAsync(order, isRecurring, unzerCustomerId, basketId);
 
             var response = await _unzerApiHttpClient.RequestAsync<CreateCapturePayPageRequest, CapturePayPageResponse>(authPayPageReq);
             if (response.IsError)
