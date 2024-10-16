@@ -2,10 +2,6 @@
 {
     public class PaymentRefundResponse : UnzerApiResponse
     {
-        public bool isSuccess { get; set; }
-        public bool isPending { get; set; }
-        public bool isResumed { get; set; }
-        public bool isError { get; set; }
         public bool card3ds { get; set; }
         public string redirectUrl { get; set; }
         public Message message { get; set; }

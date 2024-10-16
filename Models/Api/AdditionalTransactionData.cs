@@ -7,6 +7,7 @@
         public string metadataId { get; set; }
         public string basketId { get; set; }
         public string paymentId { get; set; }
+        public string traceId { get; set; }
     }
 
     public class Additionaltransactiondata

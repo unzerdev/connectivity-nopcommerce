@@ -1,7 +1,6 @@
 ﻿namespace Unzer.Plugin.Payments.Unzer.Models.Api;
 public class PaymentAuthorizedResponse : UnzerApiResponse
 {
-    public bool isResumed { get; set; }
     public bool card3ds { get; set; }
     public string redirectUrl { get; set; }
     public Message message { get; set; }
@@ -28,4 +27,8 @@ public class Processing
     public string shortId { get; set; }
     public string _3dsEci { get; set; }
     public string traceId { get; set; }
+    public string iban { get; set; }
+    public string bic { get; set; }
+    public string descriptor { get; set; }
+    public string holder { get; set; }
 }
