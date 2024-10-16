@@ -3,6 +3,8 @@
     Layout = "_ConfigurePlugin";
 }
 
+@inject IWebHelper webHelper
+@using Nop.Core;
 @using Unzer.Plugin.Payments.Unzer.Models
 
 @await Component.InvokeAsync(typeof(StoreScopeConfigurationViewComponent))
@@ -26,7 +28,7 @@
                         <nop-label asp-for="UnzerApiKey" />
                     </div>
                     <div class="col-md-9">
-                        <nop-editor asp-for="UnzerApiKey" />
+                        <nop-editor asp-for="UnzerApiKey" html-attributes="@(new {  autocomplete = "new-password", value = Model.UnzerApiKey })" />
                         <span asp-validation-for="UnzerApiKey"></span>
                     </div>
                 </div>

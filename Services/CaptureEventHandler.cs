@@ -1,9 +1,16 @@
-﻿using Nop.Core;
+﻿using System.Text;
+using System.Text.Json;
+using DocumentFormat.OpenXml.Wordprocessing;
+using Nop.Core;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Payments;
+using Nop.Services.Catalog;
+using Nop.Services.Common;
+using Nop.Services.Localization;
 using Nop.Services.Logging;
 using Nop.Services.Orders;
 using Unzer.Plugin.Payments.Unzer.Infrastructure;
+using Unzer.Plugin.Payments.Unzer.Models;
 using Unzer.Plugin.Payments.Unzer.Models.Api;
 
 namespace Unzer.Plugin.Payments.Unzer.Services;
@@ -13,6 +20,10 @@ public class CaptureEventHandler : ICallEventHandler<CaptureEventHandler>
     private readonly IOrderService _orderService;
     private readonly IOrderProcessingService _orderProcessingService;
     private readonly UnzerPaymentSettings _unzerPaymentSettings;
+    private readonly IPriceFormatter _priceFormatter;
+    private readonly IGenericAttributeService _genericAttributeService;
+    private readonly ILocalizationService _localizationService;
+    private readonly IStoreContext _storeContext;
     private readonly ILogger _logger;
 
     public CaptureEventHandler(
@@ -20,12 +31,20 @@ public class CaptureEventHandler : ICallEventHandler<CaptureEventHandler>
         IOrderService orderService,
         IOrderProcessingService orderProcessingService,
         UnzerPaymentSettings unzerPaymentSettings,
+        IPriceFormatter priceFormatter,
+        IGenericAttributeService genericAttributeService,
+        ILocalizationService localizationService,
+        IStoreContext storeContext,
         ILogger logger)
     {
         _unzerApiService = unzerApiService;
         _orderService = orderService;
         _orderProcessingService = orderProcessingService;
         _unzerPaymentSettings = unzerPaymentSettings;
+        _priceFormatter = priceFormatter;
+        _genericAttributeService = genericAttributeService;
+        _localizationService = localizationService;
+        _storeContext = storeContext;
         _logger = logger;
     }
 
@@ -36,7 +55,10 @@ public class CaptureEventHandler : ICallEventHandler<CaptureEventHandler>
 
         var paymentCapt = await _unzerApiService.PaymentCaptureResponse(eventPayload.paymentId);
         if (paymentCapt == null || paymentCapt.IsError)
+        {
+            await _logger.WarningAsync($"CaptureEventHandler.HandleEvent: Capture failed at provider with {paymentCapt.message}");
             throw new NopException(paymentCapt.ErrorResponse.Errors.First().merchantMessage);
+        }
 
         var nopOrder = await _orderService.GetOrderByIdAsync(Convert.ToInt32(paymentCapt.orderId));
         if (nopOrder == null)
@@ -45,14 +67,16 @@ public class CaptureEventHandler : ICallEventHandler<CaptureEventHandler>
         if (eventPayload.Event == "charge.succeeded" && nopOrder.PaymentStatus == PaymentStatus.Paid)
             return;
 
-        if (paymentCapt.IsError)
-        {
-            await _logger.WarningAsync($"CaptureEventHandler.UpdatePaymentAsync: Capture for order {nopOrder.Id} failed at provider");
-            await AddOrderNote(nopOrder, "Order cannot be captured, failed at provider");
-            return;
-        }
-
         await UpdatePaymentAsync(nopOrder, paymentCapt);
+    }
+
+    public async Task HandleEvent(PaymentCaptureResponse paymentResponse)
+    {
+        var nopOrder = await _orderService.GetOrderByIdAsync(Convert.ToInt32(paymentResponse.orderId));
+        if (nopOrder == null)
+            throw new NopException($"Order {paymentResponse.orderId} could not be found");
+
+        await UpdatePaymentAsync(nopOrder, paymentResponse);
     }
 
     private async Task UpdatePaymentAsync(Order order, PaymentCaptureResponse paymentCapt)
@@ -61,19 +85,85 @@ public class CaptureEventHandler : ICallEventHandler<CaptureEventHandler>
         var isAutoCapture = _unzerPaymentSettings.AutoCapture == AutoCapture.AutoCapture ||
                             _unzerPaymentSettings.AutoCapture == AutoCapture.OnAuthForNoneDeliverProduct ||
                             _unzerPaymentSettings.AutoCapture == AutoCapture.OnAuthForDownloadableProduct;
+        var isPrePayment = UnzerPaymentDefaults.ReadUnzerPaymentType(order.PaymentMethodSystemName).Prepayment;
 
-        if ((isAutoCapture || isRecurrence) && order.PaymentStatus == PaymentStatus.Pending)
+        if (isPrePayment && paymentCapt.IsPending && order.PaymentStatus == PaymentStatus.Pending)
         {
-            if (!paymentCapt.IsPending && this._orderProcessingService.CanMarkOrderAsAuthorized(order))
+            var store = await _storeContext.GetCurrentStoreAsync();
+            var languageId = _storeContext.GetCurrentStore().DefaultLanguageId;
+            var orderAmount = await _priceFormatter.FormatPriceAsync(order.OrderTotal, true, order.CustomerCurrencyCode, false, languageId);
+            var paymentInstructions = await _localizationService.GetResourceAsync("Plugins.Payments.Unzer.PaymentMethod.Prepayment.Instructions");
+            var paymentRef = await _localizationService.GetResourceAsync("Plugins.Payments.Unzer.PaymentMethod.Prepayment.Reference");
+
+            var prePaymentComplete = new PrePaymentCompletedModel
+            {
+                OrderId = order.Id,
+                HowToPay = string.Format(paymentInstructions, orderAmount),
+                holder = $"Holder: {paymentCapt.processing.holder}",
+                Bic = $"BIC: {paymentCapt.processing.bic}",
+                Iban = $"IBAN {paymentCapt.processing.iban}",
+                PaymentReference = $"{paymentRef} {paymentCapt.processing.shortId}"
+            };
+
+            await _genericAttributeService.SaveAttributeAsync(order, UnzerPaymentDefaults.PrePaymentInstructionAttribute, JsonSerializer.Serialize(prePaymentComplete), store.Id);
+
+            var sb = new StringBuilder();
+            sb.AppendLine(prePaymentComplete.HowToPay);
+            sb.AppendLine(prePaymentComplete.holder);
+            sb.AppendLine(prePaymentComplete.Bic);
+            sb.AppendLine(prePaymentComplete.Iban);
+            sb.AppendLine(await _localizationService.GetResourceAsync("Plugins.Payments.Unzer.PaymentMethod.Prepayment.Reference"));
+            sb.AppendLine(paymentCapt.processing.shortId);
+
+            await _orderService.InsertOrderNoteAsync(new OrderNote
+            {
+                OrderId = order.Id,
+                Note = sb.ToString(),
+                DisplayToCustomer = true,
+                CreatedOnUtc = DateTime.UtcNow
+            });
+        }
+
+        if ((isAutoCapture || isRecurrence || isPrePayment) && order.PaymentStatus == PaymentStatus.Pending)
+        {
+            if (_orderProcessingService.CanMarkOrderAsAuthorized(order))
             {
                 await _orderProcessingService.MarkAsAuthorizedAsync(order);
+
+                var sb = new StringBuilder();
+                sb.AppendFormat("Unzer Payment id: {0}", paymentCapt.resources.paymentId).AppendLine();
+                sb.AppendFormat("Short ID: {0}", paymentCapt.processing?.shortId).AppendLine();
+                sb.AppendFormat("Charge success: {0}", paymentCapt.IsSuccess).AppendLine();
+                sb.AppendFormat("Pending: {0}", paymentCapt.IsPending).AppendLine();
+                sb.AppendFormat("Payment type: {0}", UnzerPaymentDefaults.MapPaymentType(paymentCapt.resources.typeId)).AppendLine();
+
+                // order note update
+                await AddOrderNote(order, sb.ToString());
+
+                if (isPrePayment)
+                {
+                    var authAndPayID = $"{paymentCapt.resources.paymentId}/{paymentCapt.Id}";
+                    order.AuthorizationTransactionId = authAndPayID;
+                    await _orderService.UpdateOrderAsync(order);
+                }
             }
         }
 
-        if (!await _orderProcessingService.CanCaptureAsync(order))
+        if (!await _orderProcessingService.CanCaptureAsync(order) || (isPrePayment && paymentCapt.IsPending))
         {
-            await _logger.WarningAsync($"CaptureEventHandler.UpdatePaymentAsync: Capture for order {order.Id} cannot be handled, order must be authorized");
-            await AddOrderNote(order, "Order cannot be captured, must be authorized");
+            if (isPrePayment && paymentCapt.IsPending)
+            {
+                order.OrderStatus = OrderStatus.Pending;
+                await _orderService.UpdateOrderAsync(order);
+                await AddOrderNote(order, "Unzer Prepayment is pending, waiting for payment");
+
+                await _logger.WarningAsync($"CaptureEventHandler.UpdatePaymentAsync: Capture for order {order.Id} cannot be handled, order payment is pending");                
+            }
+            else
+            {
+                await _logger.WarningAsync($"CaptureEventHandler.UpdatePaymentAsync: Capture for order {order.Id} cannot be handled, order must be authorized");
+                await AddOrderNote(order, "Order cannot be captured, must be authorized");
+            }
         }
         else
         {
@@ -81,6 +171,7 @@ public class CaptureEventHandler : ICallEventHandler<CaptureEventHandler>
             order.CaptureTransactionId = captAndPayID;
             order.CaptureTransactionResult = paymentCapt.message.merchant;
             order.SubscriptionTransactionId = isRecurrence ? paymentCapt.resources?.typeId : null;
+
             await _orderService.UpdateOrderAsync(order);
 
             if (_orderProcessingService.CanMarkOrderAsPaid(order))

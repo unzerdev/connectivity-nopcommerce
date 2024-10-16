@@ -53,7 +53,7 @@ public class UnzerPaymentPluginManager : PaymentPluginManager
                     curDescriptor.SystemName = $"{systemName}.{paymentMethod}";
                     curDescriptor.FriendlyName = friendlyName;
 
-                    var methDesc = UnzerPaymentDefaults.PaymentMethodDescription;
+                    var methDesc = await _localizationService.GetResourceAsync("Plugins.Payments.Unzer.PaymentMethod.Description");
                     curDescriptor.Description = string.Format(methDesc, friendlyName);
 
                     var qpPaymentClone = curDescriptor.Instance<IPaymentMethod>();

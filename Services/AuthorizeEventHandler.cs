@@ -47,11 +47,18 @@ public class AuthorizeEventHandler : ICallEventHandler<AuthorizeEventHandler>
             return;
         
         await UpdatePayment(nopOrder, paymentAuth);
-
-        var test = typeof(WebHookEventType);
     }
 
-    public async Task UpdatePayment(Order order, PaymentAuthorizedResponse paymentAuth)
+    public async Task HandleEvent(PaymentCaptureResponse paymentResponse)
+    {
+        var nopOrder = await _orderService.GetOrderByIdAsync(Convert.ToInt32(paymentResponse.orderId));
+        if (nopOrder == null)
+            throw new NopException($"Order {paymentResponse.orderId} could not be found");
+
+        await UpdatePayment(nopOrder, paymentResponse);
+    }
+
+    public async Task UpdatePayment(Order order, PaymentCaptureResponse paymentAuth)
     {
         var authIsOk = paymentAuth.IsSuccess;
         if (authIsOk)
@@ -65,9 +72,9 @@ public class AuthorizeEventHandler : ICallEventHandler<AuthorizeEventHandler>
 
         var sb = new StringBuilder();
         sb.AppendFormat("Unzer Payment id: {0}", paymentAuth.resources.paymentId).AppendLine();
+        sb.AppendFormat("Short ID: {0}", paymentAuth.processing?.shortId).AppendLine();
         sb.AppendFormat("Auth. success: {0}", paymentAuth.IsSuccess).AppendLine();
-        sb.AppendFormat("OrderID: {0}", paymentAuth.orderId).AppendLine();
-        sb.AppendFormat("Pending: {0}", paymentAuth.IsPending).AppendLine();
+        sb.AppendFormat("Pending: {0}", paymentAuth.IsPending).AppendLine();        
         sb.AppendFormat("Payment type: {0}", UnzerPaymentDefaults.MapPaymentType(paymentAuth.resources.typeId)).AppendLine();
 
         // order note update

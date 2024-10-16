@@ -169,6 +169,27 @@ namespace Unzer.Plugin.Payments.Unzer.Services
             return status;
         }
 
+        public async Task<PaymentApiStatus> CancelChargePayment(Order order, decimal cancelAmount)
+        {
+            var status = new PaymentApiStatus { Success = false, StatusMessage = string.Empty };
+            var cancelPayPageReq = await _unzerPayRequestBuilder.BuildCancelChargeRequestAsync(order, cancelAmount);
+
+            var response = await _unzerApiHttpClient.RequestAsync<CreateCancelChargedRequest, PaymentCancelResponse>(cancelPayPageReq);
+            if (response.IsError)
+            {
+                var errMsg = response.ErrorResponse.Errors.Any() ? string.Join(",", response?.ErrorResponse.Errors.Select(e => e.merchantMessage)) : "";
+                await _logger.ErrorAsync($"UnzerApiService.CancelChargePayment: Failed with call to Unzer API Client with {errMsg}");
+                status.StatusMessage = errMsg;
+                status.Success = response.IsSuccess;
+                return status;
+            }
+
+            status.Success = response.IsSuccess;
+            status.StatusMessage = "Payment cancel successfull";
+            status.ResponseId = $"{response.resources.paymentId}/{response.Id}";
+            return status;
+        }
+
         public async Task<PaymentApiStatus> CreateCustomer(Customer customer, Address billingAddress, Address shippingAddress)
         {
             var status = new PaymentApiStatus { Success = false, StatusMessage = string.Empty };
@@ -235,12 +256,11 @@ namespace Unzer.Plugin.Payments.Unzer.Services
             return status;
         }
 
-
-        public async Task<PaymentAuthorizedResponse> PaymentAuthorizedResponse(string paymentId)
+        public async Task<PaymentCaptureResponse> PaymentAuthorizedResponse(string paymentId)
         {
             var getPayAuthReq = await _unzerPayRequestBuilder.BuildPaymentAuthorizeRequestAsync(paymentId);
 
-            var response = await _unzerApiHttpClient.RequestAsync<GetPaymentAutorizeRequest, PaymentAuthorizedResponse>(getPayAuthReq);
+            var response = await _unzerApiHttpClient.RequestAsync<GetPaymentAutorizeRequest, PaymentCaptureResponse>(getPayAuthReq);
             if (response.IsError)
             {
                 var errMsg = response.ErrorResponse.Errors.Any() ? string.Join(",", response?.ErrorResponse.Errors.Select(e => e.merchantMessage)) : "";
@@ -383,6 +403,27 @@ namespace Unzer.Plugin.Payments.Unzer.Services
             }
 
             return response;
+        }
+
+        public async Task<PaymentCaptureResponse> CreatePrepayment(Order order, string unzerCustomerId, string basketId)
+        {
+            var prePaymentTypeReq = new CreatePrepaymentTypeRequest();
+            var prePaymentTypeRersponse = await _unzerApiHttpClient.RequestAsync<CreatePrepaymentTypeRequest, CreatePrepaymentTypeResponse>(prePaymentTypeReq);
+            if (prePaymentTypeRersponse.IsError)
+            {
+                var errMsg = prePaymentTypeRersponse.ErrorResponse.Errors.Any() ? string.Join(",", prePaymentTypeRersponse?.ErrorResponse.Errors.Select(e => e.merchantMessage)) : "";
+                await _logger.ErrorAsync($"UnzerApiService.CreatePrepayment: Failed with call to Unzer API Client with {errMsg}");
+            }
+
+            var prepaymentChargePayment = await _unzerPayRequestBuilder.BuildPrepaymentChargeRequestAsync(order, prePaymentTypeRersponse.Id, false, unzerCustomerId, basketId);
+            var prePaymentChargeRersponse = await _unzerApiHttpClient.RequestAsync<CreatePrepaymentChargeRequest, PaymentCaptureResponse>(prepaymentChargePayment);
+            if (prePaymentChargeRersponse.IsError)
+            {
+                var errMsg = prePaymentChargeRersponse.ErrorResponse.Errors.Any() ? string.Join(",", prePaymentTypeRersponse?.ErrorResponse.Errors.Select(e => e.merchantMessage)) : "";
+                await _logger.ErrorAsync($"UnzerApiService.CreatePrepayment: Failed with call to Unzer API Client with {errMsg}");
+            }
+
+            return prePaymentChargeRersponse;
         }
     }
 }

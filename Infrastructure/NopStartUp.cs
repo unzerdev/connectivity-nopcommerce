@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Nop.Core.Infrastructure;
+using Nop.Services.Messages;
 using Nop.Services.Orders;
 using Nop.Services.Payments;
 using Nop.Web.Framework.Infrastructure.Extensions;
@@ -26,6 +27,7 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
             services.AddScoped<UnzerPaymentRequestBuilder>();
             services.AddScoped<IOrderProcessingService, DelayedPlaceOrderProcessingService>();
             services.AddScoped<IPaymentPluginManager, UnzerPaymentPluginManager>();
+            services.AddScoped<IMessageTokenProvider, UnzerMessageTokenProvider>();
         }
     }
 }

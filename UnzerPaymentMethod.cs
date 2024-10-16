@@ -16,7 +16,13 @@ using Unzer.Plugin.Payments.Unzer.Infrastructure;
 using Nop.Core.Domain.Catalog;
 using Nop.Services.Customers;
 using Nop.Services.Common;
-using System.Reflection.Metadata.Ecma335;
+using System.Text;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Nop.Services.Catalog;
+using Unzer.Plugin.Payments.Unzer.Models;
+using System.Text.Json;
 
 namespace Unzer.Plugin.Payments.Unzer
 {
@@ -37,10 +43,16 @@ namespace Unzer.Plugin.Payments.Unzer
         private readonly UnzerPaymentRequestBuilder _unzerPayRequestBuilder;
         private readonly ICustomerService _customerService;
         private readonly IAddressService _addressService;
+        private readonly IUrlHelperFactory _urlHelperFactory;
+        private readonly IActionContextAccessor _actionContextAccessor;
+        private readonly IPriceFormatter _priceFormatter;
+        private readonly IGenericAttributeService _genericAttributeService;
+        private readonly ICallEventHandler<CaptureEventHandler> _captEventHandler;
 
         private IHttpContextAccessor _httpContextAccessor;
+        private IUrlHelper _urlHelper;
 
-        public UnzerPaymentMethod(UnzerPaymentSettings unzerPaymentSettings, ISettingService settingService, IOrderTotalCalculationService orderTotalCalculationService, IOrderService orderService, IWebHelper webHelper, IUnzerApiService unzerApiService, ShoppingCartSettings shoppingCartSettings, ILocalizationService localizationService, ILogger logger, ICurrencyService currencyService, IStoreService storeService, IStoreContext storeContext, UnzerPaymentRequestBuilder unzerPayRequestBuilder, IHttpContextAccessor httpContextAccessor, ICustomerService customerService, IAddressService addressService)
+        public UnzerPaymentMethod(UnzerPaymentSettings unzerPaymentSettings, ISettingService settingService, IOrderTotalCalculationService orderTotalCalculationService, IOrderService orderService, IWebHelper webHelper, IUnzerApiService unzerApiService, ShoppingCartSettings shoppingCartSettings, ILocalizationService localizationService, ILogger logger, ICurrencyService currencyService, IStoreService storeService, IStoreContext storeContext, UnzerPaymentRequestBuilder unzerPayRequestBuilder, IHttpContextAccessor httpContextAccessor, ICustomerService customerService, IAddressService addressService, IUrlHelperFactory urlHelperFactory, IActionContextAccessor actionContextAccessor, IPriceFormatter priceFormatter, IGenericAttributeService genericAttributeService, ICallEventHandler<CaptureEventHandler> captEventHandle)
         {
             _unzerPaymentSettings = unzerPaymentSettings;
             _settingService = settingService;  
@@ -58,6 +70,13 @@ namespace Unzer.Plugin.Payments.Unzer
             _httpContextAccessor = httpContextAccessor;
             _customerService = customerService;
             _addressService = addressService;
+            _urlHelperFactory = urlHelperFactory;
+            _actionContextAccessor = actionContextAccessor;
+            _priceFormatter = priceFormatter;
+            _genericAttributeService = genericAttributeService;
+            _captEventHandler = captEventHandle;
+
+            _urlHelper = _urlHelperFactory.GetUrlHelper(_actionContextAccessor.ActionContext);
         }
 
         #region Properies
@@ -106,13 +125,31 @@ namespace Unzer.Plugin.Payments.Unzer
             var canAutoCapture = await CanAutoCapture(order);
             var unzerPaymentType = UnzerPaymentDefaults.ReadUnzerPaymentType(order.PaymentMethodSystemName);
             var onlySupportsCharge = unzerPaymentType.SupportCharge && !unzerPaymentType.SupportAuthurize;
-            
+
+            var curStore = await _storeContext.GetCurrentStoreAsync();
             var unzerCustomerId = await PrepareCustomerForPaymentAsync(order);
             var unzerBasketID = await PrepareBasketForPaymentAsync(order);
 
             var paylinkUrl = string.Empty;
 
-            if((isRecurring || canAutoCapture || onlySupportsCharge) && unzerPaymentType.SupportCharge)
+            if(unzerPaymentType.Prepayment)
+            {
+                var languageId = _storeContext.GetCurrentStore().DefaultLanguageId;
+                var redirect = _urlHelper.RouteUrl(UnzerPaymentDefaults.UnzerPaymentStatusRouteName, new { orderId = order.Id }, _webHelper.GetCurrentRequestProtocol());
+
+                var prepaymentResponse = await _unzerApiService.CreatePrepayment(order, unzerCustomerId, unzerBasketID);
+                if (prepaymentResponse.IsError)
+                {
+                    var invalidMsg = $"Prepayment for order {order.Id} failed with {prepaymentResponse.message}";
+                    throw new NopException(invalidMsg);
+                }
+
+                await _captEventHandler.HandleEvent(prepaymentResponse);
+
+                _httpContextAccessor.HttpContext.Response.Redirect(redirect);
+            }
+
+            if ((isRecurring || canAutoCapture || onlySupportsCharge) && unzerPaymentType.SupportCharge)
             {
                 var payRespons = await _unzerApiService.CreateCapturePayment(order, isRecurring, unzerCustomerId, unzerBasketID);
 
@@ -348,6 +385,11 @@ namespace Unzer.Plugin.Payments.Unzer
 
                 ["Plugins.Payments.Unzer.Fields.SendOrderConfirmOnAuthorized"] = "Send order receipt on authorize",
                 ["Plugins.Payments.Unzer.Fields.SendOrderConfirmOnAuthorized.Hint"] = "Sending order notification when the payment gets authorized",
+
+                ["Plugins.Payments.Unzer.PaymentMethod.Description"] = "Pay by {0}",
+                ["Plugins.Payments.Unzer.PaymentMethod.DefaultMethodDescription"] = "Unzer Payments",
+                ["Plugins.Payments.Unzer.PaymentMethod.Prepayment.Instructions"] = "Please transfer the amount of {0} to the following account:",
+                ["Plugins.Payments.Unzer.PaymentMethod.Prepayment.Reference"] = "Please use only this indentification number as the descriptor:",
             });
 
             await base.InstallAsync();
@@ -372,9 +414,13 @@ namespace Unzer.Plugin.Payments.Unzer
             return Task.FromResult(new ProcessPaymentRequest());
         }
 
-        public Task<string> GetPaymentMethodDescriptionAsync()
+        public async Task<string> GetPaymentMethodDescriptionAsync()
         {
-            return Task.FromResult(PluginDescriptor.Description);
+            var paymentDescription = PluginDescriptor.Description;
+            if(_unzerPaymentSettings.SelectedPaymentTypes != null && _unzerPaymentSettings.SelectedPaymentTypes.Count() <= 1)
+                paymentDescription = await _localizationService.GetResourceAsync("Plugins.Payments.Unzer.PaymentMethod.DefaultMethodDescription");
+
+            return paymentDescription;
         }
 
         public Type GetPublicViewComponent()
@@ -444,7 +490,8 @@ namespace Unzer.Plugin.Payments.Unzer
         public async Task<VoidPaymentResult> VoidAsync(VoidPaymentRequest voidPaymentRequest)
         {
             var result = new VoidPaymentResult();
-            var transId = voidPaymentRequest.Order.AuthorizationTransactionId;
+
+            var unzerPaymentType = UnzerPaymentDefaults.ReadUnzerPaymentType(voidPaymentRequest.Order.PaymentMethodSystemName);
 
             var orderTotal = _currencyService.ConvertCurrency(voidPaymentRequest.Order.OrderTotal, voidPaymentRequest.Order.CurrencyRate);
             if (_shoppingCartSettings.RoundPricesDuringCalculation)
@@ -452,7 +499,17 @@ namespace Unzer.Plugin.Payments.Unzer
                 orderTotal = Math.Round(orderTotal, 2);
             }
 
-            var refundStatus = await _unzerApiService.CancelPayment(voidPaymentRequest.Order, orderTotal);
+            PaymentApiStatus refundStatus;
+
+            if (unzerPaymentType.Prepayment)
+            {
+                refundStatus = await _unzerApiService.CancelChargePayment(voidPaymentRequest.Order, orderTotal);
+            }
+            else
+            {
+                refundStatus = await _unzerApiService.CancelPayment(voidPaymentRequest.Order, orderTotal);
+            }
+             
             if (!refundStatus.Success)
             {
                 result.Errors = new List<string>() { refundStatus.StatusMessage };

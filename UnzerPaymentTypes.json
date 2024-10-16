@@ -182,7 +182,7 @@
     "Name": "Unzer Invoice",
     "ShortName": "piv",
     "SystemName": "Payments.Unzer.paylater-invoice",
-    "UnzerName": "applepay",
+    "UnzerName": "paylater-invoice",
     "SupportAuthurize": true,
     "SupportCharge": false,
     "Deprecated": false,

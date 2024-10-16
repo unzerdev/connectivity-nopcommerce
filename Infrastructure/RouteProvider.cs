@@ -28,8 +28,13 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
                 defaults: new { controller = "UnzerCallback", action = "CallbackHandler" });
 
             endpointRouteBuilder.MapControllerRoute(name: UnzerPaymentDefaults.UnzerPaymentStatusRouteName,
-                pattern: "unzerpayment/unzerpaymentstatus/{orderId:int}",
-                defaults: new { controller = "UnzerCallback", action = "UnzerPaymentStatus" });
+                pattern: "unzerpayment/unzerpaymentcompleted/{orderId:int}",
+                defaults: new { controller = "UnzerCallback", action = "UnzerPaymentCompleted" });
+
+            endpointRouteBuilder.MapControllerRoute(name: UnzerPaymentDefaults.UnzerPrePaymentComplteRouteName,
+                pattern: "unzerpayment/unzerprepaymentcompleted/{model}",
+                defaults: new { controller = "UnzerCallback", action = "UnzerPrePaymentCompleted" });
+
         }
 
         /// <summary>

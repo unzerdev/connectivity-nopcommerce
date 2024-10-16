@@ -7,7 +7,7 @@ namespace Unzer.Plugin.Payments.Unzer.Components
     {
         public IViewComponentResult Invoke()
         {
-            return View("~/Plugins/Payments.UnzerPay/Views/PaymentInfo.cshtml");
+            return View("~/Plugins/Payments.Unzer/Views/PaymentInfo.cshtml");
         }
     }
 }

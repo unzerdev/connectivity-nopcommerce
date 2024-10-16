@@ -25,12 +25,13 @@ namespace Unzer.Plugin.Payments.Unzer
         public static string PaymentPluginManagerOverride = "ObjectaData.Plugin.Payments.Unzer.Services.UnzerPaymentPluginManager";
 
         public static string CallBackUrlRouteName = "Plugin.Payments.Unzer.CallbackHandler";
-        public static string UnzerPaymentStatusRouteName = "UnzerPaymentStatus";
+        public static string UnzerPaymentStatusRouteName = "Plugin.Payments.Unzer.UnzerPaymentCompleted";
+        public static string UnzerPrePaymentComplteRouteName = "Plugin.Payments.Unzer.UnzerPrePaymentCompleted";
         public static string DevCallbackUrl = "https://webhook-test.com/25e2a12f616f335f7eaf8843a3de5e57";
         public static WebHookEventType[] CallbackEvents = new WebHookEventType[] { WebHookEventType.authorize, WebHookEventType.charge };
-        public static string[] IgnoreCallbackEvents = new string[] { "authorize.failed", "authorize.pending", "authorize.canceled", "charge.failed", "charge.pending", "charge.canceled" };
+        public static string[] IgnoreCallbackEvents = new string[] { "authorize.failed", "authorize.pending", "authorize.canceled", "charge.failed", "charge.canceled" };
 
-        public static string[] RequiredHeaders = new string[] {};
+        public static string PrePaymentInstructionAttribute => "UnzerPrePaymentsInstruction";
 
         public static string MapPaymentType(string paymentTypes)
         {

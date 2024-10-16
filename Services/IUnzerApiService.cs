@@ -12,10 +12,12 @@ namespace Unzer.Plugin.Payments.Unzer.Services
         UnzerPaymentSettings UnzerPaymentSettings { set; }
         Task<CreatePaymentResponse> CreateAuthPayment(Order order, bool isRecurring, string unzerCustomerId, string basketId);
         Task<CreatePaymentResponse> CreateCapturePayment(Order order, bool isRecurring, string unzerCustomerId, string basketId);
+        Task<PaymentCaptureResponse> CreatePrepayment(Order order, string unzerCustomerId, string basketId);
         Task<PaymentApiStatus> CapturePayment(Order order, decimal capturreAmount);
         Task<PaymentApiStatus> CaptureSubPayment(Order order, decimal capturreAmount);
         Task<PaymentApiStatus> RefundPayment(Order order, decimal refundAmount);
         Task<PaymentApiStatus> CancelPayment(Order order, decimal refundAmount);
+        Task<PaymentApiStatus> CancelChargePayment(Order order, decimal cancelAmount);
 
         Task<PaymentApiStatus> GetCustomer(string customerId);
         Task<PaymentApiStatus> CreateCustomer(Customer customer, Address billingAddress, Address shippingAddress);
@@ -32,7 +34,7 @@ namespace Unzer.Plugin.Payments.Unzer.Services
 
         Task<GetKeyPairResponse> GetKeyPairAsync();
 
-        Task<PaymentAuthorizedResponse> PaymentAuthorizedResponse(string paymentId);
+        Task<PaymentCaptureResponse> PaymentAuthorizedResponse(string paymentId);
         Task<PaymentCaptureResponse> PaymentCaptureResponse(string paymentId);
 
         bool IsConfigured(UnzerPaymentSettings unzerSettings);

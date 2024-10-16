@@ -1,0 +1,47 @@
+﻿@model PrePaymentCompletedModel
+@{
+    Layout = "_ColumnsOne";
+}
+
+@using Unzer.Plugin.Payments.Unzer.Models
+
+<div class="page checkout-page order-completed-page">
+    <div class="page-title">
+        <h1>@T("Checkout.ThankYou")</h1>
+    </div>
+    <div class="page-body checkout-data">
+        <div class="section order-completed">
+            <div class="title">
+                <strong>@T("Checkout.YourOrderHasBeenSuccessfullyProcessed")</strong>
+            </div>
+            <div class="details">
+                <div class="order-number">
+                    <strong>@T("Checkout.OrderNumber"): @Model.OrderId</strong>
+                </div>
+
+                <div>
+                    <p>
+                        <b>@Model.HowToPay</b>
+                        <br /><br />
+
+                        @Model.holder
+                        <br />
+                        @Model.Iban
+                        <br />
+                        @Model.Bic
+                        <br />
+                        <br />
+                        @Model.PaymentReference
+                    </p>
+                </div>
+
+                <div class="details-link">
+                    <a href="@Url.RouteUrl("OrderDetails", new { orderID = Model.OrderId })">@T("Checkout.PlacedOrderDetails")</a>
+                </div>
+            </div>
+            <div class="buttons">
+                <button type="button" class="button-1 order-completed-continue-button" onclick="setLocation('@Url.RouteUrl("Homepage")')">@T("Checkout.ThankYou.Continue")</button>
+            </div>
+        </div>
+    </div>
+</div>

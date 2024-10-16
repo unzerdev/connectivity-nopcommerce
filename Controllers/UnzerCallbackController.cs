@@ -1,12 +1,15 @@
 ﻿using System.Text.Json;
+using DocumentFormat.OpenXml.EMMA;
 using Microsoft.AspNetCore.Mvc;
 using Nop.Core;
 using Nop.Core.Domain.Logging;
 using Nop.Core.Domain.Orders;
+using Nop.Services.Common;
 using Nop.Services.Customers;
 using Nop.Services.Logging;
 using Nop.Services.Orders;
 using Nop.Services.Payments;
+using Unzer.Plugin.Payments.Unzer.Models;
 using Unzer.Plugin.Payments.Unzer.Models.Api;
 using Unzer.Plugin.Payments.Unzer.Services;
 
@@ -22,6 +25,7 @@ public class UnzerCallbackController : Controller
     private readonly IUnzerApiService _unzerApiService;
     private readonly ICustomerService _customerService;
     private readonly OrderSettings _orderSettings;
+    private readonly IGenericAttributeService _genericAttributeService;
     private readonly ICallEventHandler<AuthorizeEventHandler> _authEventHandler;
     private readonly ICallEventHandler<CaptureEventHandler> _captEventHandler;
 
@@ -34,6 +38,7 @@ public class UnzerCallbackController : Controller
         IUnzerApiService unzerApiService,
         ICustomerService customerService,
         OrderSettings orderSettings,
+        IGenericAttributeService genericAttributeService,
         ICallEventHandler<AuthorizeEventHandler> authEventHandler,
         ICallEventHandler<CaptureEventHandler> captEventHandler)
     {
@@ -44,6 +49,8 @@ public class UnzerCallbackController : Controller
         _workContext = workContext;
         _storeContext = storeContext;
         _unzerApiService = unzerApiService;
+        _customerService = customerService;
+        _genericAttributeService = genericAttributeService;
         _authEventHandler = authEventHandler;
         _captEventHandler = captEventHandler;
     }
@@ -99,12 +106,22 @@ public class UnzerCallbackController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> UnzerPaymentStatus(int orderId)
+    public async Task<IActionResult> UnzerPaymentCompleted(int orderId)
     {
         Order order = await _orderService.GetOrderByIdAsync(orderId);
         if (order == null || order.Deleted)
         {
             return RedirectToRoute("Homepage");
+        }
+        var unzerPaymentType = UnzerPaymentDefaults.ReadUnzerPaymentType(order.PaymentMethodSystemName);
+        if (unzerPaymentType.Prepayment)
+        {
+            var store = await _storeContext.GetCurrentStoreAsync();
+            //var customer = await _customerService.GetCustomerByIdAsync(order.CustomerId);            
+            var instructionJson = await _genericAttributeService.GetAttributeAsync<string>(order, UnzerPaymentDefaults.PrePaymentInstructionAttribute, store.Id);
+            var prePaymentInstModel = JsonSerializer.Deserialize<PrePaymentCompletedModel>(instructionJson);
+            //await _genericAttributeService.SaveAttributeAsync<PrePaymentCompletedModel>(order, UnzerPaymentDefaults.PrePaymentInstructionAttribute, null, store.Id);
+            return View("~/Plugins/Payments.Unzer/Views/Completed.cshtml", prePaymentInstModel);
         }
 
         await _logger.InformationAsync("UnzerCallbackController.UnzerPaymentStatus: Return from Unzer Payment Page");
@@ -125,6 +142,25 @@ public class UnzerCallbackController : Controller
         if (order.PaymentStatus == Nop.Core.Domain.Payments.PaymentStatus.Pending)
         {
             return RedirectToRoute("OrderDetails", new { orderId = order.Id });
+        }
+
+        //return View("~/Plugins/Payments.Unzer/Views/Completed.cshtml", model);
+
+        return RedirectToRoute("CheckoutCompleted", new { orderId = order.Id });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> UnzerPrePaymentCompleted(PrePaymentCompletedModel model)
+    {
+        Order order = await _orderService.GetOrderByIdAsync(model.OrderId);
+        if (order == null || order.Deleted)
+        {
+            return RedirectToRoute("Homepage");
+        }
+        var unzerPaymentType = UnzerPaymentDefaults.ReadUnzerPaymentType(order.PaymentMethodSystemName);
+        if (unzerPaymentType.Prepayment)
+        {
+            return View("~/Plugins/Payments.Unzer/Views/Completed.cshtml", model);
         }
 
         return RedirectToRoute("CheckoutCompleted", new { orderId = order.Id });

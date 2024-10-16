@@ -14,8 +14,8 @@ namespace Unzer.Plugin.Payments.Unzer.Models
         public string UnzerApiBaseUrl { get; set; }
         
         [NopResourceDisplayName("Plugins.Payments.Unzer.Fields.UnzerApiKey")]
-        [DataType(DataType.Password)]
         [NoTrim]
+        [DataType(DataType.Password)]        
         public string UnzerApiKey { get; set; }
         public string UnzerPublicApiKey { get; set; }
 

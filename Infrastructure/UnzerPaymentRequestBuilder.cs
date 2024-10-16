@@ -122,7 +122,7 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
             var customer = await _customerService.GetCustomerByIdAsync(order.CustomerId);
             var excludeTypes = _unzerPaymentSettings.SelectedPaymentTypes.Count > 1 ? _unzerPaymentSettings.AvailablePaymentTypes.Where(t => t != selectedPaymentMethod).ToArray() : new string[0];
 
-            var authReq = new CreateCapturePayPageRequest
+            var captReq = new CreateCapturePayPageRequest
             {
                 currency = currencyCode,
                 amount = orderTotal.ToString("0.00", CultureInfo.InvariantCulture),
@@ -143,8 +143,48 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
                 }
             };
 
-            return authReq;
+            return captReq;
         }
+
+        public async Task<CreatePrepaymentChargeRequest> BuildPrepaymentChargeRequestAsync(Order order, string prepaymentTypeId, bool isRecurring, string unzerCustomerId, string basketId)
+        {
+            var currentStore = _storeContext.GetCurrentStore();
+
+            var currencyCode = _unzerPaymentSettings.CurrencyCode;
+            if (string.IsNullOrEmpty(currencyCode))
+            {
+                currencyCode = order.CustomerCurrencyCode;
+            }
+
+            var orderTotal = _currencyService.ConvertCurrency(order.OrderTotal, order.CurrencyRate);
+            if (_shoppingCartSettings.RoundPricesDuringCalculation)
+            {
+                orderTotal = Math.Round(orderTotal, 2);
+            }
+
+            var unzerPaymentType = UnzerPaymentDefaults.ReadUnzerPaymentType(order.PaymentMethodSystemName);
+            var selectedPaymentMethod = unzerPaymentType != null ? unzerPaymentType.UnzerName : order.PaymentMethodSystemName;
+
+            var customer = await _customerService.GetCustomerByIdAsync(order.CustomerId);
+            var excludeTypes = _unzerPaymentSettings.SelectedPaymentTypes.Count > 1 ? _unzerPaymentSettings.AvailablePaymentTypes.Where(t => t != selectedPaymentMethod).ToArray() : new string[0];
+
+            var captReq = new CreatePrepaymentChargeRequest
+            {
+                currency = currencyCode,
+                amount = orderTotal.ToString("0.00", CultureInfo.InvariantCulture),
+                orderId = order.Id.ToString("D6"),
+                resources = new Resources
+                {
+                    customerId = !string.IsNullOrEmpty(unzerCustomerId) ? customer.CustomerGuid.ToString() : null,
+                    metadataId = _unzerPaymentSettings.UnzerMetadataId,
+                    basketId = !string.IsNullOrEmpty(basketId) ? basketId : null,
+                    typeId = prepaymentTypeId
+                }
+            };
+
+            return captReq;
+        }
+
 
         public async Task<CreateCaptureRequest> BuildCaptureRequestAsync(Order order, decimal amount)
         {
@@ -204,6 +244,25 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
             return canReq;
         }
 
+        public async Task<CreateCancelChargedRequest> BuildCancelChargeRequestAsync(Order order, decimal amount)
+        {
+            var unzerPaymentType = UnzerPaymentDefaults.ReadUnzerPaymentType(order.PaymentMethodSystemName);
+            var transactionId = unzerPaymentType.Prepayment ? order.AuthorizationTransactionId : order.CaptureTransactionId;
+
+            var paymentInfo = transactionId.Split('/');
+            var paymentId = paymentInfo.Any() ? paymentInfo.First() : order.Id.ToString("D6");
+            var authId = paymentInfo.Any() ? paymentInfo.Last() : transactionId;
+
+            var canReq = new CreateCancelChargedRequest
+            {
+                chargeId = authId,
+                paymentId = paymentId,
+                amount = amount.ToString("0.00", CultureInfo.InvariantCulture),
+            };
+
+            return canReq;
+        }
+
         public async Task<CreateMetadataRequest> BuildCreateMetadataRequestAsync()
         {
             var store = await _storeContext.GetCurrentStoreAsync();
@@ -247,6 +306,8 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
 
             var custIsGuset = await _customerService.IsGuestAsync(customer);
 
+            var isSameAddress = billingAddress.IsSameAddress(shippingAddress);
+
             var custReq = new CreateCustomerRequest
             {
                 customerId = customer.CustomerGuid.ToString(),
@@ -273,7 +334,8 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
                     city = shippingAddress.City,
                     zip = shippingAddress.ZipPostalCode,
                     country = shippingCountry?.TwoLetterIsoCode,
-                    state = shippingState?.Name
+                    state = shippingState?.Name,
+                    shippingType = isSameAddress ? "equals-billing" : "different-address"
                 }
             };
 
@@ -289,6 +351,10 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
             var customerLanguage = customer.LanguageId.HasValue ? (await _languageService.GetLanguageByIdAsync(customer.LanguageId.Value))?.UniqueSeoCode : string.Empty;
 
             var custIsGuset = await _customerService.IsGuestAsync(customer);
+
+            var isSameAddress = billingAddress.IsSameAddress(shippingAddress);
+
+            var adrComp = shippingAddress == billingAddress;
 
             var custReq = new UpdateCustomerRequest
             {
@@ -317,7 +383,8 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
                     city = shippingAddress.City,
                     zip = shippingAddress.ZipPostalCode,
                     country = shippingCountry?.TwoLetterIsoCode,
-                    state = shippingState?.Name
+                    state = shippingState?.Name,
+                    shippingType = isSameAddress ? "equals-billing" : "different-address"
                 }
             };
 
@@ -341,7 +408,7 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
                 amountTotalVat = order.OrderTax,
                 currencyCode = currencyCode,
                 orderId = order.Id.ToString("D6"),
-                basketItems = await orderItems.SelectAwait( async i => new Basketitem
+                basketItems = await orderItems.SelectAwait(async i => new Basketitem
                 {
                     basketItemReferenceId = i.Id.ToString(),
                     quantity = i.Quantity,
@@ -350,6 +417,7 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
                     amountDiscount = i.DiscountAmountInclTax,
                     amountNet = i.PriceExclTax,
                     amountVat = i.PriceInclTax - i.PriceExclTax,
+                    vat = order.TaxRates != null && order.TaxRates.Length > 0 ? Convert.ToInt32(order.TaxRates[0]) : 0,
                     title = (await _productService.GetProductByIdAsync(i.ProductId)).Name
 
                 }).ToArrayAsync()
