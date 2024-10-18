@@ -1,4 +1,8 @@
 ﻿using System.Globalization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Nop.Core;
 using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Customers;
@@ -30,8 +34,13 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
         private readonly IPaymentPluginManager _paymentPluginManager;
         private readonly ICustomerService _customerService;
         private readonly ILanguageService _languageService;
+        private readonly IUrlHelperFactory _urlHelperFactory;
+        private readonly IWebHelper _webHelper;
+        private readonly IActionContextAccessor _actionContextAccessor;
 
-        public UnzerPaymentRequestBuilder(IAddressService addressService, ICountryService countryService, IStateProvinceService stateService, IOrderService orderService, IProductService productService, ICurrencyService currencyService, IStoreService storeService, IStoreContext storeContext, ShoppingCartSettings shoppingCartSettings, UnzerPaymentSettings unzserPaymentSettings, IPaymentPluginManager paymentPluginManager, ICustomerService customerService, ILanguageService languageService)
+        private IUrlHelper _urlHelper;
+
+        public UnzerPaymentRequestBuilder(IAddressService addressService, ICountryService countryService, IStateProvinceService stateService, IOrderService orderService, IProductService productService, ICurrencyService currencyService, IStoreService storeService, IStoreContext storeContext, ShoppingCartSettings shoppingCartSettings, UnzerPaymentSettings unzserPaymentSettings, IPaymentPluginManager paymentPluginManager, ICustomerService customerService, ILanguageService languageService, IUrlHelperFactory urlHelperFactory, IWebHelper webHelper, IActionContextAccessor actionContextAccessor)
         {
             _addressService = addressService;
             _countryService = countryService;
@@ -46,12 +55,19 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
             _paymentPluginManager = paymentPluginManager;
             _customerService = customerService;
             _languageService = languageService;
+            _urlHelperFactory = urlHelperFactory;
+            _webHelper = webHelper;
+            _actionContextAccessor = actionContextAccessor;
+
+            _urlHelper = _urlHelperFactory.GetUrlHelper(_actionContextAccessor.ActionContext);
         }
 
         public async Task<CreateAuthorizePayPageRequest> BuildAuthorizePayPageRequestAsync(Order order, bool isRecurring, string unzerCustomerId, string basketId)
         {
             var shopUrl = await GetShopUrlAsync();
-            var returnUrl = $"{shopUrl}/unzerpayment/unzerpaymentstatus/{order.Id}";
+            //var returnUrl = $"{shopUrl}/unzerpayment/unzerpaymentcompleted/{order.Id}";
+            var returnUrl = _urlHelper.RouteUrl(UnzerPaymentDefaults.UnzerPaymentStatusRouteName, new { orderId = order.Id }, _webHelper.GetCurrentRequestProtocol());
+
             //var returnUrl = $"{shopUrl}/checkout/completed/{order.Id}";
             var currentStore = _storeContext.GetCurrentStore();
 
@@ -100,7 +116,9 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
         public async Task<CreateCapturePayPageRequest> BuildCapturePayPageRequestAsync(Order order, bool isRecurring, string unzerCustomerId, string basketId)
         {
             var shopUrl = await GetShopUrlAsync();
-            var returnUrl = $"{shopUrl}/unzerpayment/unzerpaymentstatus/{order.Id}";
+            //var returnUrl = $"{shopUrl}/unzerpayment/unzerpaymentcompleted/{order.Id}";
+            var returnUrl = _urlHelper.RouteUrl(UnzerPaymentDefaults.UnzerPaymentStatusRouteName, new { orderId = order.Id }, _webHelper.GetCurrentRequestProtocol());
+
             //var returnUrl = $"{shopUrl}/checkout/completed/{order.Id}";
             var currentStore = _storeContext.GetCurrentStore();
 

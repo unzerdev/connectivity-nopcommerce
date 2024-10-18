@@ -67,6 +67,9 @@ public class CaptureEventHandler : ICallEventHandler<CaptureEventHandler>
         if (eventPayload.Event == "charge.succeeded" && nopOrder.PaymentStatus == PaymentStatus.Paid)
             return;
 
+        if (eventPayload.Event == "charge.pending" && !UnzerPaymentDefaults.ReadUnzerPaymentType(nopOrder.PaymentMethodSystemName).Prepayment)
+            return;
+
         await UpdatePaymentAsync(nopOrder, paymentCapt);
     }
 
@@ -86,45 +89,15 @@ public class CaptureEventHandler : ICallEventHandler<CaptureEventHandler>
                             _unzerPaymentSettings.AutoCapture == AutoCapture.OnAuthForNoneDeliverProduct ||
                             _unzerPaymentSettings.AutoCapture == AutoCapture.OnAuthForDownloadableProduct;
         var isPrePayment = UnzerPaymentDefaults.ReadUnzerPaymentType(order.PaymentMethodSystemName).Prepayment;
+        var isOnlyCharge = !UnzerPaymentDefaults.ReadUnzerPaymentType(order.PaymentMethodSystemName).SupportAuthurize &&
+                            UnzerPaymentDefaults.ReadUnzerPaymentType(order.PaymentMethodSystemName).SupportCharge;
 
         if (isPrePayment && paymentCapt.IsPending && order.PaymentStatus == PaymentStatus.Pending)
         {
-            var store = await _storeContext.GetCurrentStoreAsync();
-            var languageId = _storeContext.GetCurrentStore().DefaultLanguageId;
-            var orderAmount = await _priceFormatter.FormatPriceAsync(order.OrderTotal, true, order.CustomerCurrencyCode, false, languageId);
-            var paymentInstructions = await _localizationService.GetResourceAsync("Plugins.Payments.Unzer.PaymentMethod.Prepayment.Instructions");
-            var paymentRef = await _localizationService.GetResourceAsync("Plugins.Payments.Unzer.PaymentMethod.Prepayment.Reference");
-
-            var prePaymentComplete = new PrePaymentCompletedModel
-            {
-                OrderId = order.Id,
-                HowToPay = string.Format(paymentInstructions, orderAmount),
-                holder = $"Holder: {paymentCapt.processing.holder}",
-                Bic = $"BIC: {paymentCapt.processing.bic}",
-                Iban = $"IBAN {paymentCapt.processing.iban}",
-                PaymentReference = $"{paymentRef} {paymentCapt.processing.shortId}"
-            };
-
-            await _genericAttributeService.SaveAttributeAsync(order, UnzerPaymentDefaults.PrePaymentInstructionAttribute, JsonSerializer.Serialize(prePaymentComplete), store.Id);
-
-            var sb = new StringBuilder();
-            sb.AppendLine(prePaymentComplete.HowToPay);
-            sb.AppendLine(prePaymentComplete.holder);
-            sb.AppendLine(prePaymentComplete.Bic);
-            sb.AppendLine(prePaymentComplete.Iban);
-            sb.AppendLine(await _localizationService.GetResourceAsync("Plugins.Payments.Unzer.PaymentMethod.Prepayment.Reference"));
-            sb.AppendLine(paymentCapt.processing.shortId);
-
-            await _orderService.InsertOrderNoteAsync(new OrderNote
-            {
-                OrderId = order.Id,
-                Note = sb.ToString(),
-                DisplayToCustomer = true,
-                CreatedOnUtc = DateTime.UtcNow
-            });
+            await HandlePrepaymentAsync(order, paymentCapt);
         }
 
-        if ((isAutoCapture || isRecurrence || isPrePayment) && order.PaymentStatus == PaymentStatus.Pending)
+        if ((isAutoCapture || isRecurrence || isPrePayment || isOnlyCharge) && order.PaymentStatus == PaymentStatus.Pending)
         {
             if (_orderProcessingService.CanMarkOrderAsAuthorized(order))
             {
@@ -184,6 +157,43 @@ public class CaptureEventHandler : ICallEventHandler<CaptureEventHandler>
                 await AddOrderNote(order, "Order cannot be marked as paid");
             }
         }
+    }
+
+    private async Task HandlePrepaymentAsync(Order order, PaymentCaptureResponse paymentCapt)
+    {
+        var store = await _storeContext.GetCurrentStoreAsync();
+        var languageId = _storeContext.GetCurrentStore().DefaultLanguageId;
+        var orderAmount = await _priceFormatter.FormatPriceAsync(order.OrderTotal, true, order.CustomerCurrencyCode, false, languageId);
+        var paymentInstructions = await _localizationService.GetResourceAsync("Plugins.Payments.Unzer.PaymentMethod.Prepayment.Instructions");
+        var paymentRef = await _localizationService.GetResourceAsync("Plugins.Payments.Unzer.PaymentMethod.Prepayment.Reference");
+
+        var prePaymentComplete = new PrePaymentCompletedModel
+        {
+            OrderId = order.Id,
+            HowToPay = string.Format(paymentInstructions, orderAmount),
+            holder = $"Holder: {paymentCapt.processing.holder}",
+            Bic = $"BIC: {paymentCapt.processing.bic}",
+            Iban = $"IBAN {paymentCapt.processing.iban}",
+            PaymentReference = $"{paymentRef} {paymentCapt.processing.shortId}"
+        };
+
+        await _genericAttributeService.SaveAttributeAsync(order, UnzerPaymentDefaults.PrePaymentInstructionAttribute, JsonSerializer.Serialize(prePaymentComplete), store.Id);
+
+        var sb = new StringBuilder();
+        sb.AppendLine(prePaymentComplete.HowToPay);
+        sb.AppendLine(prePaymentComplete.holder);
+        sb.AppendLine(prePaymentComplete.Bic);
+        sb.AppendLine(prePaymentComplete.Iban);
+        sb.AppendLine(await _localizationService.GetResourceAsync("Plugins.Payments.Unzer.PaymentMethod.Prepayment.Reference"));
+        sb.AppendLine(paymentCapt.processing.shortId);
+
+        await _orderService.InsertOrderNoteAsync(new OrderNote
+        {
+            OrderId = order.Id,
+            Note = sb.ToString(),
+            DisplayToCustomer = true,
+            CreatedOnUtc = DateTime.UtcNow
+        });
     }
 
     private async Task AddOrderNote(Order order, string note)
