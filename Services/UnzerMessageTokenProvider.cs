@@ -81,7 +81,6 @@ public class UnzerMessageTokenProvider : MessageTokenProvider
             return;
         }
 
-        var instructionIdx = 0;
         var prePaymentInstModel = JsonSerializer.Deserialize<PrePaymentCompletedModel>(instructionJson);
         var instuctions = new List<string>
         {
@@ -207,37 +206,35 @@ public class UnzerMessageTokenProvider : MessageTokenProvider
         var orderTotalInCustomerCurrency = _currencyService.ConvertCurrency(order.OrderTotal, order.CurrencyRate);
         var cusTotal = await _priceFormatter.FormatPriceAsync(orderTotalInCustomerCurrency, true, order.CustomerCurrencyCode, false, languageId);
 
+        //Build prepayment instructions
+        var prepayInst = BuildPrePaymentInstructions(instuctions);
+
         //subtotal
-        var nextInstruction = instructionIdx < instuctions.Count() ? instuctions[instructionIdx++] : "&nbsp;";
-        sb.AppendLine($"<tr style=\"text-align:left;\"><td colspan=\"2\">{nextInstruction}</td><td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{await _localizationService.GetResourceAsync("Messages.Order.SubTotal", languageId)}</strong></td> <td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{cusSubTotal}</strong></td></tr>");
+        sb.AppendLine($"<tr style=\"text-align:left;\">{prepayInst}<td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{await _localizationService.GetResourceAsync("Messages.Order.SubTotal", languageId)}</strong></td> <td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{cusSubTotal}</strong></td></tr>");
 
         //discount (applied to order subtotal)
         if (displaySubTotalDiscount)
         {
-            nextInstruction = instructionIdx < instuctions.Count() ? instuctions[instructionIdx++] : "&nbsp;";
-            sb.AppendLine($"<tr style=\"text-align:left;\"><td colspan=\"2\">{nextInstruction}</td><td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{await _localizationService.GetResourceAsync("Messages.Order.SubTotalDiscount", languageId)}</strong></td> <td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{cusSubTotalDiscount}</strong></td></tr>");
+            sb.AppendLine($"<tr style=\"text-align:left;\"><td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{await _localizationService.GetResourceAsync("Messages.Order.SubTotalDiscount", languageId)}</strong></td> <td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{cusSubTotalDiscount}</strong></td></tr>");
         }
 
         //shipping
         if (displayShipping)
         {
-            nextInstruction = instructionIdx < instuctions.Count() ? instuctions[instructionIdx++] : "&nbsp;";
-            sb.AppendLine($"<tr style=\"text-align:left;\"><td colspan=\"2\">{nextInstruction}</td><td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{await _localizationService.GetResourceAsync("Messages.Order.Shipping", languageId)}</strong></td> <td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{cusShipTotal}</strong></td></tr>");
+            sb.AppendLine($"<tr style=\"text-align:left;\"><td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{await _localizationService.GetResourceAsync("Messages.Order.Shipping", languageId)}</strong></td> <td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{cusShipTotal}</strong></td></tr>");
         }
 
         //payment method fee
         if (displayPaymentMethodFee)
         {
-            nextInstruction = instructionIdx < instuctions.Count() ? instuctions[instructionIdx++] : "&nbsp;";
             var paymentMethodFeeTitle = await _localizationService.GetResourceAsync("Messages.Order.PaymentMethodAdditionalFee", languageId);
-            sb.AppendLine($"<tr style=\"text-align:left;\"><td colspan=\"2\">{nextInstruction}</td><td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{paymentMethodFeeTitle}</strong></td> <td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{cusPaymentMethodAdditionalFee}</strong></td></tr>");
+            sb.AppendLine($"<tr style=\"text-align:left;\"><td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{paymentMethodFeeTitle}</strong></td> <td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{cusPaymentMethodAdditionalFee}</strong></td></tr>");
         }
 
         //tax
         if (displayTax)
         {
-            nextInstruction = instructionIdx < instuctions.Count() ? instuctions[instructionIdx++] : "&nbsp;";
-            sb.AppendLine($"<tr style=\"text-align:left;\"><td colspan=\"2\"> {nextInstruction} </td><td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{await _localizationService.GetResourceAsync("Messages.Order.Tax", languageId)}</strong></td> <td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{cusTaxTotal}</strong></td></tr>");
+            sb.AppendLine($"<tr style=\"text-align:left;\"><td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{await _localizationService.GetResourceAsync("Messages.Order.Tax", languageId)}</strong></td> <td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{cusTaxTotal}</strong></td></tr>");
         }
 
         if (displayTaxRates)
@@ -247,16 +244,14 @@ public class UnzerMessageTokenProvider : MessageTokenProvider
                 var taxRate = string.Format(await _localizationService.GetResourceAsync("Messages.Order.TaxRateLine"),
                     _priceFormatter.FormatTaxRate(item.Key));
                 var taxValue = await _priceFormatter.FormatPriceAsync(item.Value, true, order.CustomerCurrencyCode, false, languageId);
-                nextInstruction = instructionIdx < instuctions.Count() ? instuctions[instructionIdx++] : "&nbsp;";
-                sb.AppendLine($"<tr style=\"text-align:left;\"><td colspan=\"2\">{nextInstruction}</td><td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{taxRate}</strong></td> <td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{taxValue}</strong></td></tr>");
+                sb.AppendLine($"<tr style=\"text-align:left;\"><td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{taxRate}</strong></td> <td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{taxValue}</strong></td></tr>");
             }
         }
 
         //discount
         if (displayDiscount)
         {
-            nextInstruction = instructionIdx < instuctions.Count() ? instuctions[instructionIdx++] : "&nbsp;";
-            sb.AppendLine($"<tr style=\"text-align:left;\"><td colspan=\"2\">{nextInstruction}</td><td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{await _localizationService.GetResourceAsync("Messages.Order.TotalDiscount", languageId)}</strong></td> <td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{cusDiscount}</strong></td></tr>");
+            sb.AppendLine($"<tr style=\"text-align:left;\"><td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{await _localizationService.GetResourceAsync("Messages.Order.TotalDiscount", languageId)}</strong></td> <td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{cusDiscount}</strong></td></tr>");
         }
 
         //gift cards
@@ -266,8 +261,7 @@ public class UnzerMessageTokenProvider : MessageTokenProvider
                 WebUtility.HtmlEncode((await _giftCardService.GetGiftCardByIdAsync(gcuh.GiftCardId))?.GiftCardCouponCode));
             var giftCardAmount = await _priceFormatter.FormatPriceAsync(-_currencyService.ConvertCurrency(gcuh.UsedValue, order.CurrencyRate), true, order.CustomerCurrencyCode,
                 false, languageId);
-            nextInstruction = instructionIdx < instuctions.Count() ? instuctions[instructionIdx++] : "&nbsp;";
-            sb.AppendLine($"<tr style=\"text-align:left;\"><td colspan=\"2\">{nextInstruction}</td><td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{giftCardText}</strong></td> <td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{giftCardAmount}</strong></td></tr>");
+            sb.AppendLine($"<tr style=\"text-align:left;\"><td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{giftCardText}</strong></td> <td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{giftCardAmount}</strong></td></tr>");
         }
 
         //reward points
@@ -277,18 +271,26 @@ public class UnzerMessageTokenProvider : MessageTokenProvider
                 -redeemedRewardPointsEntry.Points);
             var rpAmount = await _priceFormatter.FormatPriceAsync(-_currencyService.ConvertCurrency(redeemedRewardPointsEntry.UsedAmount, order.CurrencyRate), true,
                 order.CustomerCurrencyCode, false, languageId);
-            nextInstruction = instructionIdx < instuctions.Count() ? instuctions[instructionIdx++] : "&nbsp;";
-            sb.AppendLine($"<tr style=\"text-align:left;\"><td colspan=\"2\">{nextInstruction}</td><td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{rpTitle}</strong></td> <td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{rpAmount}</strong></td></tr>");
+            sb.AppendLine($"<tr style=\"text-align:left;\"><td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{rpTitle}</strong></td> <td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{rpAmount}</strong></td></tr>");
         }
 
         //total
-        nextInstruction = instructionIdx < instuctions.Count() ? instuctions[instructionIdx++] : "&nbsp;";
-        sb.AppendLine($"<tr style=\"text-align:left;\"><td colspan=\"2\">{nextInstruction}</td><td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{await _localizationService.GetResourceAsync("Messages.Order.OrderTotal", languageId)}</strong></td> <td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{cusTotal}</strong></td></tr>");
+        sb.AppendLine($"<tr style=\"text-align:left;\"><td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{await _localizationService.GetResourceAsync("Messages.Order.OrderTotal", languageId)}</strong></td> <td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{cusTotal}</strong></td></tr>");
+    }
 
-        while (instructionIdx < instuctions.Count())
+    private string BuildPrePaymentInstructions(List<string> instructions)
+    {
+        var sb = new StringBuilder();
+
+        sb.AppendLine("<td colspan=\"2\" rowspan=\"5\">");
+
+        foreach (var instruction in instructions)
         {
-            nextInstruction = instructionIdx < instuctions.Count() ? instuctions[instructionIdx++] : "&nbsp;";
-            sb.AppendLine($"<tr style=\"text-align:left;\"><td colspan=\"4\">{nextInstruction}</td></tr>");
+            sb.AppendLine($"{instruction}<br>");
         }
+
+        sb.AppendLine("</td>");
+
+        return sb.ToString();
     }
 }
