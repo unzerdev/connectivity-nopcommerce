@@ -1,6 +1,5 @@
 ﻿using System.Text;
 using System.Text.Json;
-using DocumentFormat.OpenXml.Wordprocessing;
 using Nop.Core;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Payments;
@@ -84,13 +83,14 @@ public class CaptureEventHandler : ICallEventHandler<CaptureEventHandler>
 
     private async Task UpdatePaymentAsync(Order order, PaymentCaptureResponse paymentCapt)
     {
+        var paymentType = UnzerPaymentDefaults.ReadUnzerPaymentType(order.PaymentMethodSystemName);
+
         var isRecurrence = paymentCapt.additionalTransactionData?.card?.recurrenceType == "scheduled";
         var isAutoCapture = _unzerPaymentSettings.AutoCapture == AutoCapture.AutoCapture ||
                             _unzerPaymentSettings.AutoCapture == AutoCapture.OnAuthForNoneDeliverProduct ||
                             _unzerPaymentSettings.AutoCapture == AutoCapture.OnAuthForDownloadableProduct;
-        var isPrePayment = UnzerPaymentDefaults.ReadUnzerPaymentType(order.PaymentMethodSystemName).Prepayment;
-        var isOnlyCharge = !UnzerPaymentDefaults.ReadUnzerPaymentType(order.PaymentMethodSystemName).SupportAuthurize &&
-                            UnzerPaymentDefaults.ReadUnzerPaymentType(order.PaymentMethodSystemName).SupportCharge;
+        var isPrePayment = paymentType.Prepayment;
+        var isOnlyCharge = !paymentType.SupportAuthurize && paymentType.SupportCharge;
 
         if (isPrePayment && paymentCapt.IsPending && order.PaymentStatus == PaymentStatus.Pending)
         {

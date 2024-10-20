@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
+﻿using System.Net;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Nop.Core;
@@ -18,7 +14,6 @@ using Nop.Core.Domain.Messages;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Payments;
 using Nop.Core.Domain.Shipping;
-using Nop.Core.Domain.Stores;
 using Nop.Core.Domain.Tax;
 using Nop.Core.Domain.Vendors;
 using Nop.Core.Events;
@@ -82,14 +77,6 @@ public class UnzerMessageTokenProvider : MessageTokenProvider
         }
 
         var prePaymentInstModel = JsonSerializer.Deserialize<PrePaymentCompletedModel>(instructionJson);
-        var instuctions = new List<string>
-        {
-            prePaymentInstModel.HowToPay,
-            prePaymentInstModel.holder,
-            prePaymentInstModel.Iban,
-            prePaymentInstModel.Bic,
-            prePaymentInstModel.PaymentReference
-        };
 
         //subtotal
         string cusSubTotal;
@@ -207,7 +194,7 @@ public class UnzerMessageTokenProvider : MessageTokenProvider
         var cusTotal = await _priceFormatter.FormatPriceAsync(orderTotalInCustomerCurrency, true, order.CustomerCurrencyCode, false, languageId);
 
         //Build prepayment instructions
-        var prepayInst = BuildPrePaymentInstructions(instuctions);
+        var prepayInst = BuildPrePaymentInstructions(prePaymentInstModel);
 
         //subtotal
         sb.AppendLine($"<tr style=\"text-align:left;\">{prepayInst}<td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{await _localizationService.GetResourceAsync("Messages.Order.SubTotal", languageId)}</strong></td> <td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{cusSubTotal}</strong></td></tr>");
@@ -278,17 +265,16 @@ public class UnzerMessageTokenProvider : MessageTokenProvider
         sb.AppendLine($"<tr style=\"text-align:left;\"><td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{await _localizationService.GetResourceAsync("Messages.Order.OrderTotal", languageId)}</strong></td> <td style=\"background-color: {_templatesSettings.Color3};padding:0.6em 0.4 em;\"><strong>{cusTotal}</strong></td></tr>");
     }
 
-    private string BuildPrePaymentInstructions(List<string> instructions)
+    private string BuildPrePaymentInstructions(PrePaymentCompletedModel instruction)
     {
         var sb = new StringBuilder();
 
         sb.AppendLine("<td colspan=\"2\" rowspan=\"5\">");
-
-        foreach (var instruction in instructions)
-        {
-            sb.AppendLine($"{instruction}<br>");
-        }
-
+        sb.AppendLine($"{instruction.HowToPay}<br>");
+        sb.AppendLine($"{instruction.holder}<br>");
+        sb.AppendLine($"{instruction.Iban}<br>");
+        sb.AppendLine($"{instruction.Bic}<br>");
+        sb.AppendLine($"{instruction.PaymentReference}<br>");
         sb.AppendLine("</td>");
 
         return sb.ToString();
