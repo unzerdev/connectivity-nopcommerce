@@ -13,7 +13,6 @@ namespace Unzer.Plugin.Payments.Unzer
         public static List<UnzerPaymentType> UnzerPaymentTypes = JsonSerializer.Deserialize<List<UnzerPaymentType>>(_fileProvider.ReadAllText(_unzerPaymentTypesFile, Encoding.UTF8));
 
         public static string SystemName => "Payments.Unzer";
-        public static string PaymentMethodDescription => "Unzer Payment";
 
         public static string MetadataPluginType = "unzer/nopcommerce";
         public static string MetadataShopType = "NopCommerce";
@@ -27,6 +26,7 @@ namespace Unzer.Plugin.Payments.Unzer
         public static string CallBackUrlRouteName = "Plugin.Payments.Unzer.CallbackHandler";
         public static string UnzerPaymentStatusRouteName = "Plugin.Payments.Unzer.UnzerPaymentCompleted";
         public static string UnzerPrePaymentComplteRouteName = "Plugin.Payments.Unzer.UnzerPrePaymentCompleted";
+
         public static string DevCallbackUrl = "https://webhook-test.com/25e2a12f616f335f7eaf8843a3de5e57";
         public static WebHookEventType[] CallbackEvents = new WebHookEventType[] { WebHookEventType.authorize, WebHookEventType.charge };
         public static string[] IgnoreCallbackEvents = new string[] { "authorize.failed", "authorize.pending", "authorize.canceled", "charge.failed", "charge.canceled" };
