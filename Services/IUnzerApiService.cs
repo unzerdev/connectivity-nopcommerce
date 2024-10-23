@@ -35,7 +35,7 @@ namespace Unzer.Plugin.Payments.Unzer.Services
         Task<GetKeyPairResponse> GetKeyPairAsync();
 
         Task<PaymentCaptureResponse> PaymentAuthorizedResponse(string paymentId);
-        Task<PaymentCaptureResponse> PaymentCaptureResponse(string paymentId);
+        Task<PaymentCaptureResponse> PaymentCaptureResponse(string paymentId, string chargeId);
 
         bool IsConfigured(UnzerPaymentSettings unzerSettings);
     }

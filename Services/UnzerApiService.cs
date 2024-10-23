@@ -270,9 +270,9 @@ namespace Unzer.Plugin.Payments.Unzer.Services
             return response;
         }
 
-        public async Task<PaymentCaptureResponse> PaymentCaptureResponse(string paymentId)
+        public async Task<PaymentCaptureResponse> PaymentCaptureResponse(string paymentId, string chargeId)
         {
-            var getPayCaptReq = await _unzerPayRequestBuilder.BuildPaymentCaptureRequestAsync(paymentId);
+            var getPayCaptReq = await _unzerPayRequestBuilder.BuildPaymentCaptureRequestAsync(paymentId, chargeId);
 
             var response = await _unzerApiHttpClient.RequestAsync<GetPaymentCaptureRequest, PaymentCaptureResponse>(getPayCaptReq);
             if (response.IsError)

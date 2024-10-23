@@ -214,6 +214,39 @@ namespace Unzer.Plugin.Payments.Unzer.Services
             await CheckOrderStatusAsync(order);
         }
 
+        public override async Task<bool> CanCaptureAsync(Order order)
+        {
+            ArgumentNullException.ThrowIfNull(order);
+
+            var paymentMethod = await _paymentPluginManager.LoadPluginBySystemNameAsync(order.PaymentMethodSystemName);
+
+            if (paymentMethod == null)
+                throw new NopException("Payment method couldn't be loaded");
+
+            if (!_paymentPluginManager.IsPluginActive(paymentMethod))
+                throw new NopException("Payment method is not active");
+
+            var paymentType = UnzerPaymentDefaults.ReadUnzerPaymentType(order.PaymentMethodSystemName);
+            if (paymentType.Prepayment)
+            {
+                if (order.OrderStatus == OrderStatus.Pending && order.PaymentStatus == PaymentStatus.Authorized &&
+                    await _paymentService.SupportCaptureAsync(order.PaymentMethodSystemName))
+                    return true;
+
+                return false;
+            }
+
+            if (order.OrderStatus == OrderStatus.Cancelled ||
+                order.OrderStatus == OrderStatus.Pending)
+                return false;
+
+            if (order.PaymentStatus == PaymentStatus.Authorized &&
+                await _paymentService.SupportCaptureAsync(order.PaymentMethodSystemName))
+                return true;
+
+            return false;
+        }
+
         public override async Task MarkOrderAsPaidAsync(Order order)
         {
             ArgumentNullException.ThrowIfNull(order);
@@ -245,50 +278,6 @@ namespace Unzer.Plugin.Payments.Unzer.Services
 
             if (order.PaymentStatus == PaymentStatus.Paid)
                 await ProcessOrderPaidAsync(order);
-        }
-
-        public override bool CanMarkOrderAsPaid(Order order)
-        {
-            var paymentMethod = _paymentPluginManager.LoadPluginBySystemNameAsync(order.PaymentMethodSystemName).Result;
-            if (paymentMethod == null)
-                throw new NopException("Payment method couldn't be loaded");
-
-            if (paymentMethod.PaymentMethodType != PaymentMethodType.Redirection)
-                return base.CanMarkOrderAsPaid(order);
-
-            if (!_paymentPluginManager.IsPluginActive(paymentMethod))
-                throw new NopException("Payment method is not active");
-
-            ArgumentNullException.ThrowIfNull(order);
-
-            if (order.PaymentMethodSystemName == "Payments.SparXpres")
-            {
-                bool canBePaid;
-                if (order.OrderStatus == OrderStatus.Cancelled)
-                    canBePaid = false;
-                else if (order.PaymentStatus == PaymentStatus.Pending ||
-                    order.PaymentStatus == PaymentStatus.Paid ||
-                    order.PaymentStatus == PaymentStatus.Refunded ||
-                    order.PaymentStatus == PaymentStatus.Voided)
-                    canBePaid = false;
-                else
-                    canBePaid = true;
-
-                _logger.Information($"DelayedPlaceOrderProcessingService.CanMarkOrderAsPaid: Can order be marked as paid? ({canBePaid})");
-
-                return canBePaid;
-            }
-
-            if (order.OrderStatus == OrderStatus.Cancelled)
-                return false;
-
-            if (order.PaymentStatus == PaymentStatus.Pending ||
-                order.PaymentStatus == PaymentStatus.Paid ||
-                order.PaymentStatus == PaymentStatus.Refunded ||
-                order.PaymentStatus == PaymentStatus.Voided)
-                return false;
-
-            return true;
         }
 
         /// <summary>

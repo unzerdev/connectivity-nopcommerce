@@ -1,6 +1,5 @@
 ﻿using System.Text;
 using System.Text.Json;
-using DocumentFormat.OpenXml.Wordprocessing;
 using Nop.Core;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Payments;
@@ -53,18 +52,23 @@ public class CaptureEventHandler : ICallEventHandler<CaptureEventHandler>
         if (UnzerPaymentDefaults.IgnoreCallbackEvents.Contains(eventPayload.Event))
             return;
 
-        var paymentCapt = await _unzerApiService.PaymentCaptureResponse(eventPayload.paymentId);
+        var chargeId = eventPayload.retrieveUrl.Substring(eventPayload.retrieveUrl.LastIndexOf('/') + 1);
+
+        var paymentCapt = await _unzerApiService.PaymentCaptureResponse(eventPayload.paymentId, chargeId);
         if (paymentCapt == null || paymentCapt.IsError)
         {
             await _logger.WarningAsync($"CaptureEventHandler.HandleEvent: Capture failed at provider with {paymentCapt.message}");
             throw new NopException(paymentCapt.ErrorResponse.Errors.First().merchantMessage);
         }
-
-        var nopOrder = await _orderService.GetOrderByIdAsync(Convert.ToInt32(paymentCapt.orderId));
+        var orderId = Convert.ToInt32(paymentCapt.orderId);
+        var nopOrder = await _orderService.GetOrderByIdAsync(orderId);
         if (nopOrder == null)
             throw new NopException($"Order {paymentCapt.orderId} for payment {eventPayload.paymentId} could not be found");
 
         if (eventPayload.Event == "charge.succeeded" && nopOrder.PaymentStatus == PaymentStatus.Paid)
+            return;
+
+        if (eventPayload.Event == "charge.pending" && !UnzerPaymentDefaults.ReadUnzerPaymentType(nopOrder.PaymentMethodSystemName).Prepayment)
             return;
 
         await UpdatePaymentAsync(nopOrder, paymentCapt);
@@ -81,53 +85,30 @@ public class CaptureEventHandler : ICallEventHandler<CaptureEventHandler>
 
     private async Task UpdatePaymentAsync(Order order, PaymentCaptureResponse paymentCapt)
     {
+        var paymentType = UnzerPaymentDefaults.ReadUnzerPaymentType(order.PaymentMethodSystemName);
+
         var isRecurrence = paymentCapt.additionalTransactionData?.card?.recurrenceType == "scheduled";
         var isAutoCapture = _unzerPaymentSettings.AutoCapture == AutoCapture.AutoCapture ||
                             _unzerPaymentSettings.AutoCapture == AutoCapture.OnAuthForNoneDeliverProduct ||
                             _unzerPaymentSettings.AutoCapture == AutoCapture.OnAuthForDownloadableProduct;
-        var isPrePayment = UnzerPaymentDefaults.ReadUnzerPaymentType(order.PaymentMethodSystemName).Prepayment;
+        var isPrePayment = paymentType.Prepayment;
+        var isOnlyCharge = !paymentType.SupportAuthurize && paymentType.SupportCharge;
 
         if (isPrePayment && paymentCapt.IsPending && order.PaymentStatus == PaymentStatus.Pending)
         {
-            var store = await _storeContext.GetCurrentStoreAsync();
-            var languageId = _storeContext.GetCurrentStore().DefaultLanguageId;
-            var orderAmount = await _priceFormatter.FormatPriceAsync(order.OrderTotal, true, order.CustomerCurrencyCode, false, languageId);
-            var paymentInstructions = await _localizationService.GetResourceAsync("Plugins.Payments.Unzer.PaymentMethod.Prepayment.Instructions");
-            var paymentRef = await _localizationService.GetResourceAsync("Plugins.Payments.Unzer.PaymentMethod.Prepayment.Reference");
-
-            var prePaymentComplete = new PrePaymentCompletedModel
-            {
-                OrderId = order.Id,
-                HowToPay = string.Format(paymentInstructions, orderAmount),
-                holder = $"Holder: {paymentCapt.processing.holder}",
-                Bic = $"BIC: {paymentCapt.processing.bic}",
-                Iban = $"IBAN {paymentCapt.processing.iban}",
-                PaymentReference = $"{paymentRef} {paymentCapt.processing.shortId}"
-            };
-
-            await _genericAttributeService.SaveAttributeAsync(order, UnzerPaymentDefaults.PrePaymentInstructionAttribute, JsonSerializer.Serialize(prePaymentComplete), store.Id);
-
-            var sb = new StringBuilder();
-            sb.AppendLine(prePaymentComplete.HowToPay);
-            sb.AppendLine(prePaymentComplete.holder);
-            sb.AppendLine(prePaymentComplete.Bic);
-            sb.AppendLine(prePaymentComplete.Iban);
-            sb.AppendLine(await _localizationService.GetResourceAsync("Plugins.Payments.Unzer.PaymentMethod.Prepayment.Reference"));
-            sb.AppendLine(paymentCapt.processing.shortId);
-
-            await _orderService.InsertOrderNoteAsync(new OrderNote
-            {
-                OrderId = order.Id,
-                Note = sb.ToString(),
-                DisplayToCustomer = true,
-                CreatedOnUtc = DateTime.UtcNow
-            });
+            await HandlePrepaymentAsync(order, paymentCapt);
         }
 
-        if ((isAutoCapture || isRecurrence || isPrePayment) && order.PaymentStatus == PaymentStatus.Pending)
+        if ((isAutoCapture || isRecurrence || isPrePayment || isOnlyCharge) && order.PaymentStatus == PaymentStatus.Pending)
         {
             if (_orderProcessingService.CanMarkOrderAsAuthorized(order))
             {
+                if (isPrePayment)
+                {
+                    var authAndPayID = $"{paymentCapt.resources.paymentId}/{paymentCapt.Id}";
+                    order.AuthorizationTransactionId = authAndPayID;                    
+                }
+
                 await _orderProcessingService.MarkAsAuthorizedAsync(order);
 
                 var sb = new StringBuilder();
@@ -139,13 +120,6 @@ public class CaptureEventHandler : ICallEventHandler<CaptureEventHandler>
 
                 // order note update
                 await AddOrderNote(order, sb.ToString());
-
-                if (isPrePayment)
-                {
-                    var authAndPayID = $"{paymentCapt.resources.paymentId}/{paymentCapt.Id}";
-                    order.AuthorizationTransactionId = authAndPayID;
-                    await _orderService.UpdateOrderAsync(order);
-                }
             }
         }
 
@@ -184,6 +158,43 @@ public class CaptureEventHandler : ICallEventHandler<CaptureEventHandler>
                 await AddOrderNote(order, "Order cannot be marked as paid");
             }
         }
+    }
+
+    private async Task HandlePrepaymentAsync(Order order, PaymentCaptureResponse paymentCapt)
+    {
+        var store = await _storeContext.GetCurrentStoreAsync();
+        var languageId = _storeContext.GetCurrentStore().DefaultLanguageId;
+        var orderAmount = await _priceFormatter.FormatPriceAsync(order.OrderTotal, true, order.CustomerCurrencyCode, false, languageId);
+        var paymentInstructions = await _localizationService.GetResourceAsync("Plugins.Payments.Unzer.PaymentMethod.Prepayment.Instructions");
+        var paymentRef = await _localizationService.GetResourceAsync("Plugins.Payments.Unzer.PaymentMethod.Prepayment.Reference");
+
+        var prePaymentComplete = new PrePaymentCompletedModel
+        {
+            OrderId = order.Id,
+            HowToPay = string.Format(paymentInstructions, orderAmount),
+            holder = $"Holder: {paymentCapt.processing.holder}",
+            Bic = $"BIC: {paymentCapt.processing.bic}",
+            Iban = $"IBAN {paymentCapt.processing.iban}",
+            PaymentReference = $"{paymentRef} {paymentCapt.processing.shortId}"
+        };
+
+        await _genericAttributeService.SaveAttributeAsync(order, UnzerPaymentDefaults.PrePaymentInstructionAttribute, JsonSerializer.Serialize(prePaymentComplete), store.Id);
+
+        var sb = new StringBuilder();
+        sb.AppendLine(prePaymentComplete.HowToPay);
+        sb.AppendLine(prePaymentComplete.holder);
+        sb.AppendLine(prePaymentComplete.Bic);
+        sb.AppendLine(prePaymentComplete.Iban);
+        sb.AppendLine(await _localizationService.GetResourceAsync("Plugins.Payments.Unzer.PaymentMethod.Prepayment.Reference"));
+        sb.AppendLine(paymentCapt.processing.shortId);
+
+        await _orderService.InsertOrderNoteAsync(new OrderNote
+        {
+            OrderId = order.Id,
+            Note = sb.ToString(),
+            DisplayToCustomer = true,
+            CreatedOnUtc = DateTime.UtcNow
+        });
     }
 
     private async Task AddOrderNote(Order order, string note)
