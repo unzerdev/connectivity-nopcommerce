@@ -418,6 +418,8 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
             }
 
             var orderItems = await _orderService.GetOrderItemsAsync(order.Id);
+            var taxRates = _orderService.ParseTaxRates(order, order.TaxRates);
+            var vatRate = taxRates.Any() ? Decimal.ToInt32(taxRates.FirstOrDefault().Key) : 0;
 
             var basketReq = new CreateBasketRequest
             {
@@ -435,7 +437,7 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
                     amountDiscount = i.DiscountAmountInclTax,
                     amountNet = i.PriceExclTax,
                     amountVat = i.PriceInclTax - i.PriceExclTax,
-                    vat = order.TaxRates != null && order.TaxRates.Length > 0 ? Convert.ToInt32(order.TaxRates[0]) : 0,
+                    vat = vatRate,
                     title = (await _productService.GetProductByIdAsync(i.ProductId)).Name
                 }).ToArrayAsync()
             };
