@@ -27,10 +27,12 @@ namespace Unzer.Plugin.Payments.Unzer.Services
 
         Task<PaymentApiStatus> CreateMetadata();
         Task<PaymentApiStatus> UpdateMetadata(string metadataId);
+        Task<PaymentApiStatus> DeleteMetadata(string metadataId);
 
         Task<SetWebHooksResponse> SetWebHookEventAsync(string callbackUrl, List<string> eventTypes);
         Task<SetWebHookResponse> SetWebHookEvenAsync(string callbackUrl, WebHookEventType eventType);
         Task<SetWebHooksResponse> GetWebHookEventsAsync();
+        Task<SetWebHooksResponse> DeleteWebHookEventsAsync();
 
         Task<GetKeyPairResponse> GetKeyPairAsync();
 

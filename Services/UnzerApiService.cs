@@ -299,6 +299,34 @@ namespace Unzer.Plugin.Payments.Unzer.Services
             return response;
         }
 
+        public async Task<SetWebHooksResponse> DeleteWebHookEventsAsync()
+        {
+            var curWebHooks = await GetWebHookEventsAsync();
+
+            if (curWebHooks.IsError)
+                return curWebHooks;
+
+            foreach (var webHook in curWebHooks.Events)
+            {
+                var deleteWebHoolEvents = new DeleteWebHooksRequest
+                {
+                    webHookId = webHook.Id
+                };
+
+                var response = await _unzerApiHttpClient.RequestAsync<DeleteWebHooksRequest, SetWebHooksResponse>(deleteWebHoolEvents);
+                if (response.IsError)
+                {
+                    response.Events = new List<WebHookEvent>();
+                    var errMsg = response.ErrorResponse.Errors.Any() ? string.Join(",", response?.ErrorResponse.Errors.Select(e => e.merchantMessage)) : "";
+                    await _logger.ErrorAsync($"UnzerApiService.DeleteWebHookEventsAsync: Failed with call to Unzer API Client with {errMsg}");
+                }
+
+                return response;
+            }
+
+            return curWebHooks;
+        }
+
         public async Task<SetWebHookResponse> SetWebHookEvenAsync(string callbackUrl, WebHookEventType eventType)
         {
             var setWebHookReq = await _unzerPayRequestBuilder.BuildWebHookRequestAsync(callbackUrl, eventType);
@@ -358,6 +386,32 @@ namespace Unzer.Plugin.Payments.Unzer.Services
             {
                 var errMsg = response.ErrorResponse.Errors.Any() ? string.Join(",", response?.ErrorResponse.Errors.Select(e => e.merchantMessage)) : "";
                 await _logger.ErrorAsync($"UnzerApiService.UpdateMetadata: Failed with call to Unzer API Client with {errMsg}");
+                status.StatusMessage = errMsg;
+                return status;
+            }
+
+            status.ResponseId = response.Id;
+            status.StatusMessage = "Metadata updated successfull";
+            status.Success = true;
+
+            return status;
+        }
+
+        public async Task<PaymentApiStatus> DeleteMetadata(string metadataId)
+        {
+            var status = new PaymentApiStatus { Success = false, StatusMessage = string.Empty };
+            var metaReq = await _unzerPayRequestBuilder.BuildUpdateMetadataRequestAsync(metadataId);
+
+            metaReq.pluginVersion = null;
+            metaReq.shopVersion = null;
+            metaReq.pluginType = null;
+            metaReq.shopType = null;
+
+            var response = await _unzerApiHttpClient.RequestAsync<UpdateMetadataRequest, UnzerApiResponse>(metaReq);
+            if (response.IsError)
+            {
+                var errMsg = response.ErrorResponse.Errors.Any() ? string.Join(",", response?.ErrorResponse.Errors.Select(e => e.merchantMessage)) : "";
+                await _logger.ErrorAsync($"UnzerApiService.DeleteMetadata: Failed with call to Unzer API Client with {errMsg}");
                 status.StatusMessage = errMsg;
                 return status;
             }

@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Nop.Core;
@@ -58,16 +57,18 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
             _webHelper = webHelper;
             _actionContextAccessor = actionContextAccessor;
 
-            _urlHelper = _urlHelperFactory.GetUrlHelper(_actionContextAccessor.ActionContext);
+            if (_actionContextAccessor.ActionContext != null)
+                _urlHelper = _urlHelperFactory.GetUrlHelper(_actionContextAccessor.ActionContext);
         }
 
         public async Task<CreateAuthorizePayPageRequest> BuildAuthorizePayPageRequestAsync(Order order, bool isRecurring, string unzerCustomerId, string basketId)
         {
+            _urlHelper = _urlHelper == null ? _urlHelperFactory.GetUrlHelper(_actionContextAccessor.ActionContext) : _urlHelper;
+
             var shopUrl = await GetShopUrlAsync();
-            //var returnUrl = $"{shopUrl}/unzerpayment/unzerpaymentcompleted/{order.Id}";
+
             var returnUrl = _urlHelper.RouteUrl(UnzerPaymentDefaults.UnzerPaymentStatusRouteName, new { orderId = order.Id }, _webHelper.GetCurrentRequestProtocol());
 
-            //var returnUrl = $"{shopUrl}/checkout/completed/{order.Id}";
             var currentStore = _storeContext.GetCurrentStore();
 
             var currencyCode = _unzerPaymentSettings.CurrencyCode;
@@ -114,11 +115,12 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
 
         public async Task<CreateCapturePayPageRequest> BuildCapturePayPageRequestAsync(Order order, bool isRecurring, string unzerCustomerId, string basketId)
         {
+            _urlHelper = _urlHelper == null ? _urlHelperFactory.GetUrlHelper(_actionContextAccessor.ActionContext) : _urlHelper;
+
             var shopUrl = await GetShopUrlAsync();
-            //var returnUrl = $"{shopUrl}/unzerpayment/unzerpaymentcompleted/{order.Id}";
+
             var returnUrl = _urlHelper.RouteUrl(UnzerPaymentDefaults.UnzerPaymentStatusRouteName, new { orderId = order.Id }, _webHelper.GetCurrentRequestProtocol());
 
-            //var returnUrl = $"{shopUrl}/checkout/completed/{order.Id}";
             var currentStore = _storeContext.GetCurrentStore();
 
             var currencyCode = _unzerPaymentSettings.CurrencyCode;

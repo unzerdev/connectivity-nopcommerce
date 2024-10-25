@@ -33,32 +33,34 @@ public class UnzerPaymentPluginManager : PaymentPluginManager
         if (countryId > 0)
             activePlugins = await activePlugins.WhereAwait(async method => !(await GetRestrictedCountryIdsAsync(method)).Contains(countryId)).ToListAsync();
 
+        activePlugins = (await BuildUnzerPaymentMethods(activePlugins.ToList(), customer, storeId)).ToList();
+
         return activePlugins;
     }
 
-    public override async Task<IList<IPaymentMethod>> LoadActivePluginsAsync(List<string> systemNames, Customer customer = null, int storeId = 0)
-    {
-        if (systemNames == null)
-            return new List<IPaymentMethod>();
+    //public override async Task<IList<IPaymentMethod>> LoadActivePluginsAsync(List<string> systemNames, Customer customer = null, int storeId = 0)
+    //{
+    //    if (systemNames == null)
+    //        return new List<IPaymentMethod>();
 
-        //get loaded plugins according to passed system names
-        return (await LoadAllPluginsAsync(customer, storeId))
-            .Where(plugin => systemNames.Any(sn => plugin.PluginDescriptor.SystemName.StartsWith(sn,true, System.Globalization.CultureInfo.InvariantCulture)))
-            .ToList();
-    }
+    //    //get loaded plugins according to passed system names
+    //    return (await LoadAllPluginsAsync(customer, storeId))
+    //        .Where(plugin => systemNames.Any(sn => plugin.PluginDescriptor.SystemName.StartsWith(sn,true, System.Globalization.CultureInfo.InvariantCulture)))
+    //        .ToList();
+    //}
 
-    public override async Task<IList<IPaymentMethod>> LoadAllPluginsAsync(Customer customer = null, int storeId = 0)
-    {
-        var allPaymentMethods = await base.LoadAllPluginsAsync(customer, storeId);
-        var unzerPayemntMethods = new List<IPaymentMethod>();
+    //public override async Task<IList<IPaymentMethod>> LoadAllPluginsAsync(Customer customer = null, int storeId = 0)
+    //{
+    //    var allPaymentMethods = await base.LoadAllPluginsAsync(customer, storeId);
+    //    var unzerPayemntMethods = new List<IPaymentMethod>();
 
-        var key = await GetKeyAsync(customer, storeId);
+    //    var key = await GetKeyAsync(customer, storeId);
 
-        if (!_plugins.Any())
-            unzerPayemntMethods = (await BuildUnzerPaymentMethods(allPaymentMethods.ToList(), customer, storeId)).ToList();
+    //    if (!_plugins.Any())
+    //        unzerPayemntMethods = (await BuildUnzerPaymentMethods(allPaymentMethods.ToList(), customer, storeId)).ToList();
 
-        return unzerPayemntMethods;
-    }
+    //    return unzerPayemntMethods;
+    //}
 
     public override async Task<IPaymentMethod> LoadPluginBySystemNameAsync(string systemName, Customer customer = null, int storeId = 0)
     {

@@ -16,13 +16,11 @@ using Unzer.Plugin.Payments.Unzer.Infrastructure;
 using Nop.Core.Domain.Catalog;
 using Nop.Services.Customers;
 using Nop.Services.Common;
-using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Nop.Services.Catalog;
 using Unzer.Plugin.Payments.Unzer.Models;
-using System.Text.Json;
 
 namespace Unzer.Plugin.Payments.Unzer
 {
@@ -76,7 +74,8 @@ namespace Unzer.Plugin.Payments.Unzer
             _genericAttributeService = genericAttributeService;
             _captEventHandler = captEventHandle;
 
-            _urlHelper = _urlHelperFactory.GetUrlHelper(_actionContextAccessor.ActionContext);
+            if (_actionContextAccessor.ActionContext != null)
+                _urlHelper = _urlHelperFactory.GetUrlHelper(_actionContextAccessor.ActionContext);
         }
 
         #region Properies
@@ -120,6 +119,8 @@ namespace Unzer.Plugin.Payments.Unzer
 
         public async Task PostProcessPaymentAsync(PostProcessPaymentRequest postProcessPaymentRequest)
         {
+            _urlHelper = _urlHelper == null ? _urlHelperFactory.GetUrlHelper(_actionContextAccessor.ActionContext) : _urlHelper;
+
             var order = postProcessPaymentRequest.Order;
             var isRecurring = !string.IsNullOrEmpty(order.SubscriptionTransactionId) && order.SubscriptionTransactionId == order.OrderGuid.ToString();
             var canAutoCapture = await CanAutoCapture(order);
@@ -393,6 +394,34 @@ namespace Unzer.Plugin.Payments.Unzer
             });
 
             await base.InstallAsync();
+        }
+
+        public override async Task UninstallAsync()
+        {
+            if (_unzerPaymentSettings.UnzerWebHooksSet)
+            {
+                var webHookResponse = await _unzerApiService.DeleteWebHookEventsAsync();
+                if (webHookResponse.IsError)
+                {
+                    await _logger.WarningAsync($"Unistall Unzer Payment: Failed deleting web hooks with: {webHookResponse.ErrorResponse.Errors[0].merchantMessage}");
+                }
+            }
+
+            if (!string.IsNullOrEmpty(_unzerPaymentSettings.UnzerMetadataId))
+            {
+                var metadataResponse = await _unzerApiService.DeleteMetadata(_unzerPaymentSettings.UnzerMetadataId);
+                if (!metadataResponse.Success)
+                {
+                    await _logger.WarningAsync($"Unistall Unzer Payment: Failed deleting web hooks with: {metadataResponse.StatusMessage}");
+                }
+            }
+
+            await _settingService.DeleteSettingAsync<UnzerPaymentSettings>();
+
+            await _localizationService.DeleteLocaleResourcesAsync("Plugins.Payments.Unzer");
+            await _localizationService.DeleteLocaleResourcesAsync("Enums.Unzer.Plugin.Payments.Unzer");
+
+            await base.UninstallAsync();
         }
 
         public override async Task UpdateAsync(string currentVersion, string targetVersion)
