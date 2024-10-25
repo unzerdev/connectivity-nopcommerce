@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Http;
 namespace Unzer.Plugin.Payments.Unzer.Models.Api;
 public class CreatePrepaymentChargeRequest : UnzerApiRequest
 {
-    public string amount { get; set; }
+    public decimal amount { get; set; }
     public string currency { get; set; }
     public string paymentReference { get; set; }
     public string orderId { get; set; }

@@ -530,7 +530,7 @@ namespace Unzer.Plugin.Payments.Unzer
             var unserCustomerId = string.Empty;
             var customer = await _customerService.GetCustomerByIdAsync(order.CustomerId);
             var billingAddress = await _addressService.GetAddressByIdAsync(order.BillingAddressId);
-            var shippingAddress = await _addressService.GetAddressByIdAsync(order.ShippingAddressId.Value);
+            var shippingAddress = order.ShippingAddressId.HasValue ? await _addressService.GetAddressByIdAsync(order.ShippingAddressId.Value) : null;
 
             var custFoundResult = await _unzerApiService.GetCustomer(customer.CustomerGuid.ToString());
             if(!custFoundResult.Success)

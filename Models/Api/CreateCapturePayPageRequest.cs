@@ -5,7 +5,7 @@ namespace Unzer.Plugin.Payments.Unzer.Models.Api
 {
     public class CreateCapturePayPageRequest : UnzerApiRequest
     {
-        public string amount { get; set; }
+        public decimal amount { get; set; }
         public string currency { get; set; }
         public string returnUrl { get; set; }
         public string orderId { get; set; }

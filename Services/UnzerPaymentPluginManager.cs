@@ -15,7 +15,7 @@ public class UnzerPaymentPluginManager : PaymentPluginManager
     protected readonly ILocalizationService _localizationService;
     protected UnzerPaymentSettings _unzerPaymentSettings;
 
-    protected readonly Dictionary<string, IList<IPaymentMethod>> _plugins = new();
+    protected Dictionary<string, IList<IPaymentMethod>> _plugins = new();
     public UnzerPaymentPluginManager(ICustomerService customerService, IPluginService pluginService, ISettingService settingService, PaymentSettings paymentSettings, UnzerPaymentSettings unzerPaymentSettings, ILocalizationService localizationService) : base(customerService, pluginService, settingService, paymentSettings)
     {
         _paymentSettings = paymentSettings;
@@ -27,49 +27,37 @@ public class UnzerPaymentPluginManager : PaymentPluginManager
 
     public async override Task<IList<IPaymentMethod>> LoadActivePluginsAsync(Customer customer = null, int storeId = 0, int countryId = 0)
     {
-        var activePlugins = await base.LoadActivePluginsAsync(_paymentSettings.ActivePaymentMethodSystemNames, customer, storeId);
+        var activePlugins = await LoadActivePluginsAsync(_paymentSettings.ActivePaymentMethodSystemNames, customer, storeId);
 
         //filter by country
         if (countryId > 0)
             activePlugins = await activePlugins.WhereAwait(async method => !(await GetRestrictedCountryIdsAsync(method)).Contains(countryId)).ToListAsync();
 
-        var unzerPlugin = activePlugins.SingleOrDefault(p => p.PluginDescriptor.SystemName.Contains(UnzerPaymentDefaults.SystemName));
-        if (unzerPlugin != null)
-        {
-            if (_unzerPaymentSettings.SelectedPaymentTypes.Count() > 1)
-            {
-                var systemName = unzerPlugin.PluginDescriptor.SystemName;
-                activePlugins.Remove(unzerPlugin);
-
-                foreach (var paymentMethod in _unzerPaymentSettings.SelectedPaymentTypes)
-                {
-                    if (activePlugins.Any(p => p.PluginDescriptor.SystemName.Contains(paymentMethod)))
-                        continue;
-
-                    var friendlyName = UnzerPaymentDefaults.MapPaymentTypeName(paymentMethod);
-
-                    var curDescriptor = ClonePluginDescriptor(unzerPlugin.PluginDescriptor);
-
-                    curDescriptor.SystemName = $"{systemName}.{paymentMethod}";
-                    curDescriptor.FriendlyName = friendlyName;
-
-                    var methDesc = await _localizationService.GetResourceAsync("Plugins.Payments.Unzer.PaymentMethod.Description");
-                    curDescriptor.Description = string.Format(methDesc, friendlyName);
-
-                    var qpPaymentClone = curDescriptor.Instance<IPaymentMethod>();
-
-                    activePlugins.Add(qpPaymentClone);
-
-                    var key = await GetKeyAsync(customer, storeId);
-                    if (_plugins.ContainsKey(key))
-                    {
-                        _plugins[key].Add(qpPaymentClone);
-                    }
-                }
-            }
-        }
-
         return activePlugins;
+    }
+
+    public override async Task<IList<IPaymentMethod>> LoadActivePluginsAsync(List<string> systemNames, Customer customer = null, int storeId = 0)
+    {
+        if (systemNames == null)
+            return new List<IPaymentMethod>();
+
+        //get loaded plugins according to passed system names
+        return (await LoadAllPluginsAsync(customer, storeId))
+            .Where(plugin => systemNames.Any(sn => plugin.PluginDescriptor.SystemName.StartsWith(sn,true, System.Globalization.CultureInfo.InvariantCulture)))
+            .ToList();
+    }
+
+    public override async Task<IList<IPaymentMethod>> LoadAllPluginsAsync(Customer customer = null, int storeId = 0)
+    {
+        var allPaymentMethods = await base.LoadAllPluginsAsync(customer, storeId);
+        var unzerPayemntMethods = new List<IPaymentMethod>();
+
+        var key = await GetKeyAsync(customer, storeId);
+
+        if (!_plugins.Any())
+            unzerPayemntMethods = (await BuildUnzerPaymentMethods(allPaymentMethods.ToList(), customer, storeId)).ToList();
+
+        return unzerPayemntMethods;
     }
 
     public override async Task<IPaymentMethod> LoadPluginBySystemNameAsync(string systemName, Customer customer = null, int storeId = 0)
@@ -161,6 +149,49 @@ public class UnzerPaymentPluginManager : PaymentPluginManager
         }
 
         return logoUrl;
+    }
+
+    private async Task<IList<IPaymentMethod>> BuildUnzerPaymentMethods(List<IPaymentMethod> activePlugins, Customer customer = null, int storeId = 0)
+    {
+        var allPaymentPlugins = new List<IPaymentMethod>(activePlugins);
+
+        var unzerPlugin = allPaymentPlugins.SingleOrDefault(p => p.PluginDescriptor.SystemName.Contains(UnzerPaymentDefaults.SystemName));
+        if (unzerPlugin != null)
+        {
+            if (_unzerPaymentSettings.SelectedPaymentTypes.Count() > 1)
+            {
+                var systemName = unzerPlugin.PluginDescriptor.SystemName;
+                allPaymentPlugins.Remove(unzerPlugin);
+
+                foreach (var paymentMethod in _unzerPaymentSettings.SelectedPaymentTypes)
+                {
+                    if (allPaymentPlugins.Any(p => p.PluginDescriptor.SystemName.Contains(paymentMethod)))
+                        continue;
+
+                    var friendlyName = UnzerPaymentDefaults.MapPaymentTypeName(paymentMethod);
+
+                    var curDescriptor = ClonePluginDescriptor(unzerPlugin.PluginDescriptor);
+
+                    curDescriptor.SystemName = $"{systemName}.{paymentMethod}";
+                    curDescriptor.FriendlyName = friendlyName;
+
+                    var methDesc = await _localizationService.GetResourceAsync("Plugins.Payments.Unzer.PaymentMethod.Description");
+                    curDescriptor.Description = string.Format(methDesc, friendlyName);
+
+                    var qpPaymentClone = curDescriptor.Instance<IPaymentMethod>();
+
+                    allPaymentPlugins.Add(qpPaymentClone);
+
+                    var key = await GetKeyAsync(customer, storeId);
+                    if (_plugins.ContainsKey(key))
+                    {
+                        _plugins[key].Add(qpPaymentClone);
+                    }
+                }
+            }
+        }
+
+        return allPaymentPlugins;
     }
 
     private PluginDescriptor ClonePluginDescriptor(PluginDescriptor toClone)

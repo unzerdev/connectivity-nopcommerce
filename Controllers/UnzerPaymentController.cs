@@ -272,7 +272,8 @@ namespace Unzer.Plugin.Payments.Unzer.Controllers
             }
             else
             {
-                if (unzerPaymentSettings.AvailablePaymentTypes == null || !unzerPaymentSettings.AvailablePaymentTypes.Any())               {
+                if (unzerPaymentSettings.AvailablePaymentTypes == null || !unzerPaymentSettings.AvailablePaymentTypes.Any())
+                {
                     unzerPaymentSettings.AvailablePaymentTypes = new List<string>();
                     unzerPaymentSettings.AvailablePaymentTypes.Insert(0, "All");
                 }
