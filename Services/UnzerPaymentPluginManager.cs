@@ -45,7 +45,7 @@ public class UnzerPaymentPluginManager : PaymentPluginManager
 
     //    //get loaded plugins according to passed system names
     //    return (await LoadAllPluginsAsync(customer, storeId))
-    //        .Where(plugin => systemNames.Any(sn => plugin.PluginDescriptor.SystemName.StartsWith(sn,true, System.Globalization.CultureInfo.InvariantCulture)))
+    //        .Where(plugin => systemNames.Any(sn => plugin.PluginDescriptor.SystemName.StartsWith(sn, true, System.Globalization.CultureInfo.InvariantCulture)))
     //        .ToList();
     //}
 

@@ -32,10 +32,8 @@ namespace Unzer.Plugin.Payments.Unzer
         private readonly IOrderService _orderService;
         private readonly IWebHelper _webHelper;
         private readonly IUnzerApiService _unzerApiService;
-        private readonly ShoppingCartSettings _shoppingCartSettings;
         private readonly ILocalizationService _localizationService;
         private readonly ILogger _logger;
-        private readonly ICurrencyService _currencyService;
         private readonly IStoreContext _storeContext;
         private readonly IStoreService _storeService;
         private readonly UnzerPaymentRequestBuilder _unzerPayRequestBuilder;
@@ -43,14 +41,12 @@ namespace Unzer.Plugin.Payments.Unzer
         private readonly IAddressService _addressService;
         private readonly IUrlHelperFactory _urlHelperFactory;
         private readonly IActionContextAccessor _actionContextAccessor;
-        private readonly IPriceFormatter _priceFormatter;
-        private readonly IGenericAttributeService _genericAttributeService;
         private readonly ICallEventHandler<CaptureEventHandler> _captEventHandler;
 
         private IHttpContextAccessor _httpContextAccessor;
         private IUrlHelper _urlHelper;
 
-        public UnzerPaymentMethod(UnzerPaymentSettings unzerPaymentSettings, ISettingService settingService, IOrderTotalCalculationService orderTotalCalculationService, IOrderService orderService, IWebHelper webHelper, IUnzerApiService unzerApiService, ShoppingCartSettings shoppingCartSettings, ILocalizationService localizationService, ILogger logger, ICurrencyService currencyService, IStoreService storeService, IStoreContext storeContext, UnzerPaymentRequestBuilder unzerPayRequestBuilder, IHttpContextAccessor httpContextAccessor, ICustomerService customerService, IAddressService addressService, IUrlHelperFactory urlHelperFactory, IActionContextAccessor actionContextAccessor, IPriceFormatter priceFormatter, IGenericAttributeService genericAttributeService, ICallEventHandler<CaptureEventHandler> captEventHandle)
+        public UnzerPaymentMethod(UnzerPaymentSettings unzerPaymentSettings, ISettingService settingService, IOrderTotalCalculationService orderTotalCalculationService, IOrderService orderService, IWebHelper webHelper, IUnzerApiService unzerApiService, ILocalizationService localizationService, ILogger logger, IStoreService storeService, IStoreContext storeContext, UnzerPaymentRequestBuilder unzerPayRequestBuilder, IHttpContextAccessor httpContextAccessor, ICustomerService customerService, IAddressService addressService, IUrlHelperFactory urlHelperFactory, IActionContextAccessor actionContextAccessor, ICallEventHandler<CaptureEventHandler> captEventHandle)
         {
             _unzerPaymentSettings = unzerPaymentSettings;
             _settingService = settingService;  
@@ -58,10 +54,8 @@ namespace Unzer.Plugin.Payments.Unzer
             _orderService = orderService;
             _webHelper = webHelper;  
             _unzerApiService = unzerApiService;
-            _shoppingCartSettings = shoppingCartSettings;
             _localizationService = localizationService;
             _logger = logger;
-            _currencyService = currencyService;
             _storeService = storeService;
             _storeContext = storeContext;
             _unzerPayRequestBuilder = unzerPayRequestBuilder;
@@ -70,8 +64,6 @@ namespace Unzer.Plugin.Payments.Unzer
             _addressService = addressService;
             _urlHelperFactory = urlHelperFactory;
             _actionContextAccessor = actionContextAccessor;
-            _priceFormatter = priceFormatter;
-            _genericAttributeService = genericAttributeService;
             _captEventHandler = captEventHandle;
 
             if (_actionContextAccessor.ActionContext != null)
@@ -227,11 +219,7 @@ namespace Unzer.Plugin.Payments.Unzer
         public async Task<CapturePaymentResult> CaptureAsync(CapturePaymentRequest capturePaymentRequest)
         {
             var result = new CapturePaymentResult();
-            var orderTotal = _currencyService.ConvertCurrency(capturePaymentRequest.Order.OrderTotal, capturePaymentRequest.Order.CurrencyRate);
-            if (_shoppingCartSettings.RoundPricesDuringCalculation)
-            {
-                orderTotal = Math.Round(orderTotal, 2);
-            }
+            var orderTotal = capturePaymentRequest.Order.OrderTotal;
 
             var captureStatus = await _unzerApiService.CapturePayment(capturePaymentRequest.Order, orderTotal);
             if(!captureStatus.Success)
@@ -268,19 +256,7 @@ namespace Unzer.Plugin.Payments.Unzer
                 var initOrder = processPaymentRequest.InitialOrder;
                 if (initOrder != null)
                 {
-                    var orderTotal = _currencyService.ConvertCurrency(processPaymentRequest.OrderTotal, initOrder.CurrencyRate);
-                    if (_shoppingCartSettings.RoundPricesDuringCalculation)
-                    {
-                        var custCurrency = await _currencyService.GetCurrencyByCodeAsync(initOrder.CustomerCurrencyCode);
-                        if (custCurrency == null)
-                        {
-                            orderTotal = Math.Round(orderTotal, 2);
-                        }
-                        else
-                        {
-                            orderTotal = Math.Round(orderTotal, 2);
-                        }
-                    }
+                    var orderTotal = processPaymentRequest.OrderTotal;
 
                     var autoCapture = await CanAutoCapture(initOrder);
                     var captureResult = await _unzerApiService.CaptureSubPayment(initOrder, orderTotal);
@@ -342,6 +318,8 @@ namespace Unzer.Plugin.Payments.Unzer
                 ["Enums.Unzer.Plugin.Payments.Unzer.AutoCapture.AutoCapture"] = "Auto capture",
                 ["Enums.Unzer.Plugin.Payments.Unzer.AutoCapture.OnAuthForDownloadableProduct"] = "Ordee with e-products",
                 ["Enums.Unzer.Plugin.Payments.Unzer.AutoCapture.OnAuthForNoneDeliverProduct"] = "Order with none shipable product(s)",
+
+                ["Plugins.Payments.Unzer.PaymentInfoText"] = "Click continue to review order and complete payment.",
 
                 ["Plugins.Payments.Unzer.Instructions"] = "Configure - Unzer Payments",
 
@@ -484,12 +462,7 @@ namespace Unzer.Plugin.Payments.Unzer
         {
             var result = new RefundPaymentResult();
 
-            var amountToRefund = _currencyService.ConvertCurrency(refundPaymentRequest.AmountToRefund,
-                refundPaymentRequest.Order.CurrencyRate);
-            if (_shoppingCartSettings.RoundPricesDuringCalculation)
-            {
-                amountToRefund = Math.Round(amountToRefund, 2);
-            }
+            var amountToRefund = refundPaymentRequest.AmountToRefund;
 
             var transId = refundPaymentRequest.Order.AuthorizationTransactionId;
             var refundStatus = await _unzerApiService.RefundPayment(refundPaymentRequest.Order, amountToRefund);
@@ -522,11 +495,7 @@ namespace Unzer.Plugin.Payments.Unzer
 
             var unzerPaymentType = UnzerPaymentDefaults.ReadUnzerPaymentType(voidPaymentRequest.Order.PaymentMethodSystemName);
 
-            var orderTotal = _currencyService.ConvertCurrency(voidPaymentRequest.Order.OrderTotal, voidPaymentRequest.Order.CurrencyRate);
-            if (_shoppingCartSettings.RoundPricesDuringCalculation)
-            {
-                orderTotal = Math.Round(orderTotal, 2);
-            }
+            var orderTotal = voidPaymentRequest.Order.OrderTotal;
 
             PaymentApiStatus refundStatus;
 

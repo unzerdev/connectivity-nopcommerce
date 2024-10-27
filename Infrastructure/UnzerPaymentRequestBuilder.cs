@@ -5,7 +5,6 @@ using Nop.Core;
 using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Orders;
-using Nop.Services.Catalog;
 using Nop.Services.Common;
 using Nop.Services.Customers;
 using Nop.Services.Directory;
@@ -23,7 +22,6 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
         private readonly ICountryService _countryService;
         private readonly IStateProvinceService _stateService;
         private readonly IOrderService _orderService;
-        private readonly IProductService _productService;
         private readonly ICurrencyService _currencyService;
         private readonly IStoreService _storeService;
         private readonly IStoreContext _storeContext;
@@ -38,13 +36,12 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
 
         private IUrlHelper _urlHelper;
 
-        public UnzerPaymentRequestBuilder(IAddressService addressService, ICountryService countryService, IStateProvinceService stateService, IOrderService orderService, IProductService productService, ICurrencyService currencyService, IStoreService storeService, IStoreContext storeContext, ShoppingCartSettings shoppingCartSettings, UnzerPaymentSettings unzserPaymentSettings, IPaymentPluginManager paymentPluginManager, ICustomerService customerService, ILanguageService languageService, IUrlHelperFactory urlHelperFactory, IWebHelper webHelper, IActionContextAccessor actionContextAccessor)
+        public UnzerPaymentRequestBuilder(IAddressService addressService, ICountryService countryService, IStateProvinceService stateService, IOrderService orderService, ICurrencyService currencyService, IStoreService storeService, IStoreContext storeContext, ShoppingCartSettings shoppingCartSettings, UnzerPaymentSettings unzserPaymentSettings, IPaymentPluginManager paymentPluginManager, ICustomerService customerService, ILanguageService languageService, IUrlHelperFactory urlHelperFactory, IWebHelper webHelper, IActionContextAccessor actionContextAccessor)
         {
             _addressService = addressService;
             _countryService = countryService;
             _stateService = stateService;
             _orderService = orderService;
-            _productService = productService;
             _currencyService = currencyService;
             _storeService = storeService;
             _storeContext = storeContext;
@@ -469,7 +466,7 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
                     amountNet = Math.Round(_currencyService.ConvertCurrency(i.PriceExclTax, order.CurrencyRate), 2),
                     amountVat = Math.Round(_currencyService.ConvertCurrency(i.PriceInclTax - i.PriceExclTax, order.CurrencyRate), 2),
                     vat = vatRate,
-                    title = (await _productService.GetProductByIdAsync(i.ProductId)).Name
+                    title = (await _orderService.GetProductByOrderItemIdAsync(i.Id)).Name
                 }).ToArrayAsync()
             };
 
