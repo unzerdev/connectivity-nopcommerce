@@ -561,7 +561,7 @@ namespace Unzer.Plugin.Payments.Unzer
         {
             var unzerBasketId = string.Empty;
 
-            var basketCreate = await _unzerApiService.CreateBasket(order);
+            var basketCreate = await _unzerApiService.CreateV2Basket(order);
             if (!basketCreate.Success)
             {
                 await _logger.ErrorAsync($"Basket creation in Unzer Payment faliled with: {basketCreate.StatusMessage}");

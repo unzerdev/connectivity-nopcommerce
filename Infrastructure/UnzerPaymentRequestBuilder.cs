@@ -25,6 +25,7 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
         private readonly ICurrencyService _currencyService;
         private readonly IStoreService _storeService;
         private readonly IStoreContext _storeContext;
+        private readonly IWorkContext _workContext;
         private readonly ShoppingCartSettings _shoppingCartSettings;
         private readonly UnzerPaymentSettings _unzerPaymentSettings;
         private readonly IPaymentPluginManager _paymentPluginManager;
@@ -36,7 +37,7 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
 
         private IUrlHelper _urlHelper;
 
-        public UnzerPaymentRequestBuilder(IAddressService addressService, ICountryService countryService, IStateProvinceService stateService, IOrderService orderService, ICurrencyService currencyService, IStoreService storeService, IStoreContext storeContext, ShoppingCartSettings shoppingCartSettings, UnzerPaymentSettings unzserPaymentSettings, IPaymentPluginManager paymentPluginManager, ICustomerService customerService, ILanguageService languageService, IUrlHelperFactory urlHelperFactory, IWebHelper webHelper, IActionContextAccessor actionContextAccessor)
+        public UnzerPaymentRequestBuilder(IAddressService addressService, ICountryService countryService, IStateProvinceService stateService, IOrderService orderService, ICurrencyService currencyService, IStoreService storeService, IStoreContext storeContext, IWorkContext workContext, ShoppingCartSettings shoppingCartSettings, UnzerPaymentSettings unzserPaymentSettings, IPaymentPluginManager paymentPluginManager, ICustomerService customerService, ILanguageService languageService, IUrlHelperFactory urlHelperFactory, IWebHelper webHelper, IActionContextAccessor actionContextAccessor)
         {
             _addressService = addressService;
             _countryService = countryService;
@@ -45,6 +46,7 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
             _currencyService = currencyService;
             _storeService = storeService;
             _storeContext = storeContext;
+            _workContext = workContext;
             _shoppingCartSettings = shoppingCartSettings;
             _unzerPaymentSettings = unzserPaymentSettings;
             _paymentPluginManager = paymentPluginManager;
@@ -344,11 +346,11 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
 
         public async Task<CreateCustomerRequest> BuildCreateCustomerRequestAsync(Customer customer, Address billingAddress, Address shippingAddress)
         {
+            var lang = await _workContext.GetWorkingLanguageAsync();
             var billingCountry = await _countryService.GetCountryByIdAsync(billingAddress.CountryId.Value);
             var billingState = await _stateService.GetStateProvinceByIdAsync(billingAddress.StateProvinceId.Value);
             var shippingCountry = shippingAddress != null ? await _countryService.GetCountryByIdAsync(shippingAddress.CountryId.Value) : null;
             var shippingState = shippingAddress != null ? await _stateService.GetStateProvinceByIdAsync(shippingAddress.StateProvinceId.Value) : null;
-            var customerLanguage = customer.LanguageId.HasValue ? (await _languageService.GetLanguageByIdAsync(customer.LanguageId.Value))?.UniqueSeoCode : string.Empty;
 
             var custIsGuset = await _customerService.IsGuestAsync(customer);
 
@@ -363,7 +365,7 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
                 email = !custIsGuset ? customer.Email : billingAddress.Email,
                 phone = !custIsGuset ? customer.Phone : billingAddress.PhoneNumber,
                 mobile = !custIsGuset ? customer.Phone : billingAddress.PhoneNumber,
-                language = customerLanguage,
+                language = lang.UniqueSeoCode,
                 billingAddress = new Billingaddress
                 {
                     name = $"{billingAddress.FirstName} {billingAddress.LastName}",
@@ -390,11 +392,11 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
 
         public async Task<UpdateCustomerRequest> BuildUpdateCustomerRequestAsync(string unzerCustomerId, Customer customer, Address billingAddress, Address shippingAddress)
         {
+            var lang = await _workContext.GetWorkingLanguageAsync();
             var billingCountry = await _countryService.GetCountryByIdAsync(billingAddress.CountryId.Value);
             var billingState = await _stateService.GetStateProvinceByIdAsync(billingAddress.StateProvinceId.Value);
             var shippingCountry = shippingAddress != null ? await _countryService.GetCountryByIdAsync(shippingAddress.CountryId.Value) : null;
             var shippingState = shippingAddress != null ? await _stateService.GetStateProvinceByIdAsync(shippingAddress.StateProvinceId.Value) : null;
-            var customerLanguage = customer.LanguageId.HasValue ? (await _languageService.GetLanguageByIdAsync(customer.LanguageId.Value))?.UniqueSeoCode : string.Empty;
 
             var custIsGuset = await _customerService.IsGuestAsync(customer);
 
@@ -412,7 +414,7 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
                 email = !custIsGuset ? customer.Email : billingAddress.Email,
                 phone = !custIsGuset ? customer.Phone : billingAddress.PhoneNumber,
                 mobile = !custIsGuset ? customer.Phone : billingAddress.PhoneNumber,
-                language = customerLanguage,
+                language = lang.UniqueSeoCode,
                 billingAddress = new Billingaddress
                 {
                     name = $"{billingAddress.FirstName} {billingAddress.LastName}",
@@ -465,6 +467,37 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
                     amountDiscount = Math.Round(_currencyService.ConvertCurrency(i.DiscountAmountInclTax, order.CurrencyRate), 2),
                     amountNet = Math.Round(_currencyService.ConvertCurrency(i.PriceExclTax, order.CurrencyRate), 2),
                     amountVat = Math.Round(_currencyService.ConvertCurrency(i.PriceInclTax - i.PriceExclTax, order.CurrencyRate), 2),
+                    vat = vatRate,
+                    title = (await _orderService.GetProductByOrderItemIdAsync(i.Id)).Name
+                }).ToArrayAsync()
+            };
+
+            return basketReq;
+        }
+
+        public async Task<CreateV2BasketRequest> BuildCreateV2BasketRequestAsync(Order order)
+        {
+            var currencyCode = _unzerPaymentSettings.CurrencyCode;
+            if (string.IsNullOrEmpty(currencyCode))
+            {
+                currencyCode = order.CustomerCurrencyCode;
+            }
+
+            var orderItems = await _orderService.GetOrderItemsAsync(order.Id);
+            var taxRates = _orderService.ParseTaxRates(order, order.TaxRates);
+            var vatRate = taxRates.Any() ? Decimal.ToInt32(taxRates.FirstOrDefault().Key) : 0;
+
+            var basketReq = new CreateV2BasketRequest
+            {
+                totalValueGross = Math.Round(_currencyService.ConvertCurrency(order.OrderSubtotalInclTax, order.CurrencyRate), 2),
+                currencyCode = currencyCode,
+                orderId = order.Id.ToString("D6"),
+                basketItems = await orderItems.SelectAwait(async i => new V2Basketitem
+                {                    
+                    basketItemReferenceId = i.Id.ToString(),
+                    quantity = i.Quantity,
+                    amountPerUnitGross = Math.Round(_currencyService.ConvertCurrency(i.UnitPriceInclTax, order.CurrencyRate), 2),
+                    amountDiscountPerUnitGross = Math.Round(_currencyService.ConvertCurrency(i.DiscountAmountInclTax, order.CurrencyRate), 2),
                     vat = vatRate,
                     title = (await _orderService.GetProductByOrderItemIdAsync(i.Id)).Name
                 }).ToArrayAsync()

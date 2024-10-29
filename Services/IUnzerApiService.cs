@@ -24,6 +24,7 @@ namespace Unzer.Plugin.Payments.Unzer.Services
         Task<PaymentApiStatus> UpdateCustomer(string unserCustomerId, Customer customer, Address billingAddress, Address shippingAddress);
 
         Task<PaymentApiStatus> CreateBasket(Order order);
+        Task<PaymentApiStatus> CreateV2Basket(Order order);
 
         Task<PaymentApiStatus> CreateMetadata();
         Task<PaymentApiStatus> UpdateMetadata(string metadataId);

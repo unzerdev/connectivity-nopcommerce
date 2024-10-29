@@ -444,6 +444,27 @@ namespace Unzer.Plugin.Payments.Unzer.Services
             return status;
         }
 
+        public async Task<PaymentApiStatus> CreateV2Basket(Order order)
+        {
+            var status = new PaymentApiStatus { Success = false, StatusMessage = string.Empty };
+            var basketReq = await _unzerPayRequestBuilder.BuildCreateV2BasketRequestAsync(order);
+
+            var response = await _unzerApiHttpClient.RequestAsync<CreateV2BasketRequest, UnzerApiResponse>(basketReq);
+            if (response.IsError)
+            {
+                var errMsg = response.ErrorResponse.Errors.Any() ? string.Join(",", response?.ErrorResponse.Errors.Select(e => e.merchantMessage)) : "";
+                await _logger.ErrorAsync($"UnzerApiService.CreateV2Basket: Failed with call to Unzer API Client with {errMsg}");
+                status.StatusMessage = errMsg;
+                return status;
+            }
+
+            status.ResponseId = response.Id;
+            status.StatusMessage = "Basket created successfull";
+            status.Success = true;
+
+            return status;
+        }
+
 
         public async Task<GetKeyPairResponse> GetKeyPairAsync()
         {
