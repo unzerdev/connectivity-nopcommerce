@@ -8,7 +8,9 @@ using Nop.Core.Domain.Orders;
 using Nop.Services.Common;
 using Nop.Services.Customers;
 using Nop.Services.Directory;
+using Nop.Services.Html;
 using Nop.Services.Localization;
+using Nop.Services.Media;
 using Nop.Services.Orders;
 using Nop.Services.Payments;
 using Nop.Services.Stores;
@@ -33,11 +35,15 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
         private readonly ILanguageService _languageService;
         private readonly IUrlHelperFactory _urlHelperFactory;
         private readonly IWebHelper _webHelper;
+        private readonly ILocalizationService _localizationService;
+        private readonly IHtmlFormatter _htmlFormatter;
+        private readonly IPictureService _pictureService;
+
         private readonly IActionContextAccessor _actionContextAccessor;
 
         private IUrlHelper _urlHelper;
 
-        public UnzerPaymentRequestBuilder(IAddressService addressService, ICountryService countryService, IStateProvinceService stateService, IOrderService orderService, ICurrencyService currencyService, IStoreService storeService, IStoreContext storeContext, IWorkContext workContext, ShoppingCartSettings shoppingCartSettings, UnzerPaymentSettings unzserPaymentSettings, IPaymentPluginManager paymentPluginManager, ICustomerService customerService, ILanguageService languageService, IUrlHelperFactory urlHelperFactory, IWebHelper webHelper, IActionContextAccessor actionContextAccessor)
+        public UnzerPaymentRequestBuilder(IAddressService addressService, ICountryService countryService, IStateProvinceService stateService, IOrderService orderService, ICurrencyService currencyService, IStoreService storeService, IStoreContext storeContext, IWorkContext workContext, ShoppingCartSettings shoppingCartSettings, UnzerPaymentSettings unzserPaymentSettings, IPaymentPluginManager paymentPluginManager, ICustomerService customerService, ILanguageService languageService, IUrlHelperFactory urlHelperFactory, IWebHelper webHelper, ILocalizationService localizationService, IHtmlFormatter htmlFormatter, IPictureService pictureService, IActionContextAccessor actionContextAccessor)
         {
             _addressService = addressService;
             _countryService = countryService;
@@ -54,6 +60,10 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
             _languageService = languageService;
             _urlHelperFactory = urlHelperFactory;
             _webHelper = webHelper;
+            _localizationService = localizationService;
+            _htmlFormatter = htmlFormatter;
+            _pictureService = pictureService;
+
             _actionContextAccessor = actionContextAccessor;
 
             if (_actionContextAccessor.ActionContext != null)
@@ -477,6 +487,7 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
 
         public async Task<CreateV2BasketRequest> BuildCreateV2BasketRequestAsync(Order order)
         {
+            var lang = await _workContext.GetWorkingLanguageAsync();
             var currencyCode = _unzerPaymentSettings.CurrencyCode;
             if (string.IsNullOrEmpty(currencyCode))
             {
@@ -484,23 +495,13 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
             }
 
             var orderItems = await _orderService.GetOrderItemsAsync(order.Id);
-            var taxRates = _orderService.ParseTaxRates(order, order.TaxRates);
-            var vatRate = taxRates.Any() ? Decimal.ToInt32(taxRates.FirstOrDefault().Key) : 0;
 
             var basketReq = new CreateV2BasketRequest
             {
                 totalValueGross = Math.Round(_currencyService.ConvertCurrency(order.OrderSubtotalInclTax, order.CurrencyRate), 2),
                 currencyCode = currencyCode,
                 orderId = order.Id.ToString("D6"),
-                basketItems = await orderItems.SelectAwait(async i => new V2Basketitem
-                {                    
-                    basketItemReferenceId = i.Id.ToString(),
-                    quantity = i.Quantity,
-                    amountPerUnitGross = Math.Round(_currencyService.ConvertCurrency(i.UnitPriceInclTax, order.CurrencyRate), 2),
-                    amountDiscountPerUnitGross = Math.Round(_currencyService.ConvertCurrency(i.DiscountAmountInclTax, order.CurrencyRate), 2),
-                    vat = vatRate,
-                    title = (await _orderService.GetProductByOrderItemIdAsync(i.Id)).Name
-                }).ToArrayAsync()
+                basketItems = await ReadBasketItemsAsync(order, orderItems, lang.Id)
             };
 
             return basketReq;
@@ -548,7 +549,45 @@ namespace Unzer.Plugin.Payments.Unzer.Infrastructure
 
             return setWebHook;
         }
+        private async Task<V2Basketitem[]> ReadBasketItemsAsync(Order order, IList<OrderItem> orderItems, int languageId)
+        {
+            var basketItems = new List<V2Basketitem>();
+            var taxRates = _orderService.ParseTaxRates(order, order.TaxRates);
+            var vatRate = taxRates.Any() ? Decimal.ToInt32(taxRates.FirstOrDefault().Key) : 0;
 
+            foreach (var item in orderItems)
+            {
+                var product = await _orderService.GetProductByOrderItemIdAsync(item.Id);
+
+                //get default product picture
+                var picture = await _pictureService.GetProductPictureAsync(product, item.AttributesXml);
+
+                var basketItem = new V2Basketitem
+                {
+                    basketItemReferenceId = item.Id.ToString(),
+                    quantity = item.Quantity,
+                    amountPerUnitGross = Math.Round(_currencyService.ConvertCurrency(item.UnitPriceInclTax, order.CurrencyRate), 2),
+                    amountDiscountPerUnitGross = Math.Round(_currencyService.ConvertCurrency(item.DiscountAmountInclTax, order.CurrencyRate), 2),
+                    vat = vatRate,
+                    title = await _localizationService.GetLocalizedAsync(product, x => x.Name, languageId),
+                    imageUrl = (await _pictureService.GetPictureUrlAsync(picture)).Url
+                };
+
+                if (basketItem.imageUrl.Contains("localhost"))
+                    basketItem.imageUrl = string.Empty;
+
+                //attributes
+                if (!string.IsNullOrEmpty(item.AttributeDescription))
+                {
+                    var attributes = _htmlFormatter.ConvertHtmlToPlainText(item.AttributeDescription, true, true);
+                    basketItem.subTitle = attributes;
+                }
+
+                basketItems.Add(basketItem);
+            }
+
+            return basketItems.ToArray();
+        }
 
         private async Task<string> GetShopUrlAsync()
         {
