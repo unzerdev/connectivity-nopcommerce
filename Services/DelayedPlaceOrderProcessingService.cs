@@ -1,4 +1,5 @@
 ﻿using Nop.Core;
+using Nop.Core.Caching;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Directory;
 using Nop.Core.Domain.Localization;
@@ -43,12 +44,13 @@ namespace Unzer.Plugin.Payments.Unzer.Services
         private readonly IEventPublisher _eventPublisher;
         private readonly IPdfService _pdfService;
         private readonly ISettingService _settingService;
+
         private readonly OrderSettings _orderSettings;
         private readonly LocalizationSettings _localizationSettings;
 
         #endregion
 
-        public DelayedPlaceOrderProcessingService(CurrencySettings currencySettings, IAddressService addressService, IAffiliateService affiliateService, ICheckoutAttributeFormatter checkoutAttributeFormatter, ICountryService countryService, ICurrencyService currencyService, ICustomerActivityService customerActivityService, ICustomerService customerService, ICustomNumberFormatter customNumberFormatter, IDiscountService discountService, IEncryptionService encryptionService, IEventPublisher eventPublisher, IGenericAttributeService genericAttributeService, IGiftCardService giftCardService, ILanguageService languageService, ILocalizationService localizationService, ILogger logger, IOrderService orderService, IOrderTotalCalculationService orderTotalCalculationService, IPaymentPluginManager paymentPluginManager, IPaymentService paymentService, IPdfService pdfService, IPriceCalculationService priceCalculationService, IPriceFormatter priceFormatter, IProductAttributeFormatter productAttributeFormatter, IProductAttributeParser productAttributeParser, IProductService productService, IReturnRequestService returnRequestService, IRewardPointService rewardPointService, IShipmentService shipmentService, IShippingService shippingService, IShoppingCartService shoppingCartService, IStateProvinceService stateProvinceService, IStoreMappingService storeMappingService, IStoreService storeService, ITaxService taxService, IVendorService vendorService, IWebHelper webHelper, IWorkContext workContext, IWorkflowMessageService workflowMessageService, LocalizationSettings localizationSettings, OrderSettings orderSettings, PaymentSettings paymentSettings, RewardPointsSettings rewardPointsSettings, ShippingSettings shippingSettings, TaxSettings taxSettings, ISettingService settingService) : base(currencySettings, addressService, affiliateService, checkoutAttributeFormatter, countryService, currencyService, customerActivityService, customerService, customNumberFormatter, discountService, encryptionService, eventPublisher, genericAttributeService, giftCardService, languageService, localizationService, logger, orderService, orderTotalCalculationService, paymentPluginManager, paymentService, pdfService, priceCalculationService, priceFormatter, productAttributeFormatter, productAttributeParser, productService, returnRequestService, rewardPointService, shipmentService, shippingService, shoppingCartService, stateProvinceService, storeMappingService, storeService, taxService, vendorService, webHelper, workContext, workflowMessageService, localizationSettings, orderSettings, paymentSettings, rewardPointsSettings, shippingSettings, taxSettings)
+        public DelayedPlaceOrderProcessingService(CurrencySettings currencySettings, IAddressService addressService, IAffiliateService affiliateService, ICheckoutAttributeFormatter checkoutAttributeFormatter, ICountryService countryService, ICurrencyService currencyService, ICustomerActivityService customerActivityService, ICustomerService customerService, ICustomNumberFormatter customNumberFormatter, IDiscountService discountService, IEncryptionService encryptionService, IEventPublisher eventPublisher, IGenericAttributeService genericAttributeService, IGiftCardService giftCardService, ILanguageService languageService, ILocalizationService localizationService, ILogger logger, IOrderService orderService, IOrderTotalCalculationService orderTotalCalculationService, IPaymentPluginManager paymentPluginManager, IPaymentService paymentService, IPdfService pdfService, IPriceCalculationService priceCalculationService, IPriceFormatter priceFormatter, IProductAttributeFormatter productAttributeFormatter, IProductAttributeParser productAttributeParser, IProductService productService, IReturnRequestService returnRequestService, IRewardPointService rewardPointService, IShipmentService shipmentService, IShippingService shippingService, IShoppingCartService shoppingCartService, IStateProvinceService stateProvinceService, IStaticCacheManager staticCacheManager, IStoreMappingService storeMappingService, IStoreService storeService, ITaxService taxService, IVendorService vendorService, IWebHelper webHelper, IWorkContext workContext, IWorkflowMessageService workflowMessageService, LocalizationSettings localizationSettings, OrderSettings orderSettings, PaymentSettings paymentSettings, RewardPointsSettings rewardPointsSettings, ShippingSettings shippingSettings, TaxSettings taxSettings, ISettingService settingService) : base(currencySettings, addressService, affiliateService, checkoutAttributeFormatter, countryService, currencyService, customerActivityService, customerService, customNumberFormatter, discountService, encryptionService, eventPublisher, genericAttributeService, giftCardService, languageService, localizationService, logger, orderService, orderTotalCalculationService, paymentPluginManager, paymentService, pdfService, priceCalculationService, priceFormatter, productAttributeFormatter, productAttributeParser, productService, returnRequestService, rewardPointService, shipmentService, shippingService, shoppingCartService, stateProvinceService, staticCacheManager, storeMappingService, storeService, taxService, vendorService, webHelper, workContext, workflowMessageService, localizationSettings, orderSettings, paymentSettings, rewardPointsSettings, shippingSettings, taxSettings)
         {
             _orderService = orderService;
             _localizationService = localizationService;
@@ -76,8 +78,11 @@ namespace Unzer.Plugin.Payments.Unzer.Services
         {
             ArgumentNullException.ThrowIfNull(processPaymentRequest);
 
-            var paymentSystemName = string.Join(".", processPaymentRequest.PaymentMethodSystemName.Split('.').Take(2));
-            var orderDelaySettingName = $"{paymentSystemName}.PlaceOrderDelay";
+            if (string.IsNullOrEmpty(processPaymentRequest.PaymentMethodSystemName))
+                return await base.PlaceOrderAsync(processPaymentRequest);
+
+            var paymentSystemName = string.IsNullOrEmpty(processPaymentRequest.PaymentMethodSystemName) ? string.Empty : string.Join(".", processPaymentRequest.PaymentMethodSystemName.Split('.').Take(2));
+            var orderDelaySettingName = $"{paymentSystemName}.PlaceOrderDelay";            
             var placeOrderDelayed = await _settingService.GetSettingByKeyAsync(orderDelaySettingName, false);
             await _logger.InformationAsync($"DelayedPlaceOrderProcessingService.Placeorder looking for parameter {orderDelaySettingName} and found value {placeOrderDelayed}");
             if (!placeOrderDelayed)
@@ -92,81 +97,127 @@ namespace Unzer.Plugin.Payments.Unzer.Services
 
             var waitForPaymentAuth = paymentMethod.PaymentMethodType == PaymentMethodType.Redirection;
             if (!waitForPaymentAuth)
+            {
                 return await base.PlaceOrderAsync(processPaymentRequest);
+            }
 
-            var result = new PlaceOrderResult();
+            if (processPaymentRequest.OrderGuid == Guid.Empty)
+                throw new Exception("Order GUID is not generated");
+
+            //prepare order details
+            var details = await PreparePlaceOrderDetailsAsync(processPaymentRequest);
+
+            async Task<PlaceOrderResult> placeOrder(PlaceOrderContainer placeOrderContainer)
+            {
+                var result = new PlaceOrderResult();
+
+                try
+                {
+                    var processPaymentResult =
+                        await GetProcessPaymentResultAsync(processPaymentRequest, placeOrderContainer)
+                        ?? throw new NopException("processPaymentResult is not available");
+
+                    waitForPaymentAuth = processPaymentResult.NewPaymentStatus == PaymentStatus.Pending;
+
+                    if (processPaymentResult.Success)
+                    {
+                        var order = await SaveOrderDetailsAsync(processPaymentRequest, processPaymentResult,
+                            placeOrderContainer);
+                        result.PlacedOrder = order;
+
+                        //move shopping cart items to order items
+                        await MoveShoppingCartItemsToOrderItemsAsync(placeOrderContainer, order);
+
+                        //discount usage history
+                        await SaveDiscountUsageHistoryAsync(placeOrderContainer, order);
+
+                        //gift card usage history
+                        await SaveGiftCardUsageHistoryAsync(placeOrderContainer, order);
+
+                        //recurring orders
+                        if (placeOrderContainer.IsRecurringShoppingCart)
+                            await CreateFirstRecurringPaymentAsync(processPaymentRequest, order);
+
+                        //notifications
+                        await SendNotificationsAndSaveNotesAsync(order, waitForPaymentAuth);
+
+                        //reset checkout data
+                        await _customerService.ResetCheckoutDataAsync(placeOrderContainer.Customer,
+                            processPaymentRequest.StoreId, clearCouponCodes: true, clearCheckoutAttributes: true);
+                        await _customerActivityService.InsertActivityAsync("PublicStore.PlaceOrder",
+                            string.Format(await _localizationService.GetResourceAsync("ActivityLog.PublicStore.PlaceOrder"),
+                                order.Id), order);
+
+                        //raise event       
+                        await _eventPublisher.PublishAsync(new OrderPlacedEvent(order));
+
+                        //check order status
+                        await CheckOrderStatusAsync(order);
+
+                        if (order.PaymentStatus == PaymentStatus.Paid)
+                            await ProcessOrderPaidAsync(order);
+                    }
+                    else
+                        foreach (var paymentError in processPaymentResult.Errors)
+                            result.AddError(string.Format(
+                                await _localizationService.GetResourceAsync("Checkout.PaymentError"), paymentError));
+                }
+                catch (Exception exc)
+                {
+                    await _logger.ErrorAsync(exc.Message, exc);
+                    result.AddError(exc.Message);
+                }
+
+                if (result.Success)
+                    return result;
+
+                //log errors
+                var logError = result.Errors.Aggregate("Error while placing order. ",
+                    (current, next) => $"{current}Error {result.Errors.IndexOf(next) + 1}: {next}. ");
+                var customer = await _customerService.GetCustomerByIdAsync(processPaymentRequest.CustomerId);
+                await _logger.ErrorAsync(logError, customer: customer);
+
+                return result;
+            }
+
+            if (!_orderSettings.PlaceOrderWithLock)
+                return await placeOrder(details);
+
+            PlaceOrderResult result;
+            var resource = details.Customer.Id.ToString();
+
+            //the named mutex helps to avoid creating the same order in different threads,
+            //and does not decrease performance significantly, because the code is blocked only for the specific cart.
+            //you should be very careful, mutexes cannot be used in with the await operation
+            //we can't use semaphore here, because it produces PlatformNotSupportedException exception on UNIX based systems
+            using var mutex = new Mutex(false, resource);
+
+            mutex.WaitOne();
+
             try
             {
-                if (processPaymentRequest.OrderGuid == Guid.Empty)
-                    throw new Exception("Order GUID is not generated");
+                var cacheKey = _staticCacheManager.PrepareKey(NopOrderDefaults.OrderWithLockCacheKey, resource);
+                cacheKey.CacheTime = _orderSettings.MinimumOrderPlacementInterval;
 
-                //prepare order details
-                var details = await PreparePlaceOrderDetailsAsync(processPaymentRequest);
+                var exist = _staticCacheManager.Get(cacheKey, () => false);
 
-                var processPaymentResult = await GetProcessPaymentResultAsync(processPaymentRequest, details);
-
-                if (processPaymentResult == null)
-                    throw new NopException("processPaymentResult is not available");
-
-                waitForPaymentAuth = processPaymentResult.NewPaymentStatus == PaymentStatus.Pending;
-
-                if (processPaymentResult.Success)
+                if (exist)
                 {
-                    #region Save order details
-
-                    var order = await SaveOrderDetailsAsync(processPaymentRequest, processPaymentResult, details);
-                    result.PlacedOrder = order;
-
-                    //move shopping cart items to order items
-                    await MoveShoppingCartItemsToOrderItemsAsync(details, order);
-
-                    //discount usage history
-                    await SaveDiscountUsageHistoryAsync(details, order);
-
-                    //gift card usage history
-                    await SaveGiftCardUsageHistoryAsync(details, order);
-
-                    //recurring orders
-                    if (details.IsRecurringShoppingCart)
-                        //create recurring payment (the first payment)
-                        await CreateFirstRecurringPaymentAsync(processPaymentRequest, order);
-
-                    #endregion
-
-                    //notifications
-                    await SendNotificationsAndSaveNotesAsync(order, waitForPaymentAuth);
-
-                    //reset checkout data
-                    await _customerService.ResetCheckoutDataAsync(details.Customer, processPaymentRequest.StoreId, clearCouponCodes: true, clearCheckoutAttributes: true);
-                    await _customerActivityService.InsertActivityAsync("PublicStore.PlaceOrder", string.Format(await _localizationService.GetResourceAsync("ActivityLog.PublicStore.PlaceOrder"), order.Id), order);
-
-                    //raise event       
-                    await _eventPublisher.PublishAsync(new OrderPlacedEvent(order));
-
-                    //check order status
-                    await CheckOrderStatusAsync(order);
-
-                    if (order.PaymentStatus == PaymentStatus.Paid)
-                        await ProcessOrderPaidAsync(order);
+                    result = new PlaceOrderResult();
+                    result.Errors.Add(_localizationService.GetResourceAsync("Checkout.MinOrderPlacementInterval").Result);
                 }
                 else
-                    foreach (var paymentError in processPaymentResult.Errors)
-                        result.AddError(string.Format(await _localizationService.GetResourceAsync("Checkout.PaymentError"), paymentError));
+                {
+                    result = placeOrder(details).Result;
+
+                    if (result.Success)
+                        _staticCacheManager.SetAsync(cacheKey, true).Wait();
+                }
             }
-            catch (Exception exc)
+            finally
             {
-                await _logger.ErrorAsync(exc.Message, exc);
-                result.AddError(exc.Message);
+                mutex.ReleaseMutex();
             }
-
-            if (result.Success)
-                return result;
-
-            //log errors
-            var logError = result.Errors.Aggregate("Error while placing order. ",
-                (current, next) => $"{current}Error {result.Errors.IndexOf(next) + 1}: {next}. ");
-            var customer = await _customerService.GetCustomerByIdAsync(processPaymentRequest.CustomerId);
-            await _logger.ErrorAsync(logError, customer: customer);
 
             return result;
         }
@@ -179,6 +230,12 @@ namespace Unzer.Plugin.Payments.Unzer.Services
         {
             ArgumentNullException.ThrowIfNull(order);
 
+            if (string.IsNullOrEmpty(order.PaymentMethodSystemName))
+            {
+                await base.MarkAsAuthorizedAsync(order);
+                return;
+            }
+
             var paymentMethod = await _paymentPluginManager.LoadPluginBySystemNameAsync(order.PaymentMethodSystemName);
 
             if (paymentMethod == null)
@@ -189,7 +246,7 @@ namespace Unzer.Plugin.Payments.Unzer.Services
 
             var paymentSystemName = string.Join(".", order.PaymentMethodSystemName.Split('.').Take(2));
             var orderDelaySettingName = $"{paymentSystemName}.PlaceOrderDelay";
-            var placeOrderDelayed = await _settingService.GetSettingByKeyAsync(orderDelaySettingName, false);
+            var placeOrderDelayed = await _settingService.GetSettingByKeyAsync(orderDelaySettingName, false);            
             if (!placeOrderDelayed)
             {
                 await base.MarkAsAuthorizedAsync(order);

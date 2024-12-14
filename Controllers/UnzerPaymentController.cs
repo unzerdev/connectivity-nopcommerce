@@ -55,11 +55,9 @@ namespace Unzer.Plugin.Payments.Unzer.Controllers
             _fileProvider = fileProvider;
         }
 
+        [CheckPermission(StandardPermission.Configuration.MANAGE_PAYMENT_METHODS)]
         public async Task<IActionResult> Configure()
         {
-            if (!await _permissionService.AuthorizeAsync(StandardPermissionProvider.ManagePaymentMethods))
-                return AccessDeniedView();
-
             var storeId = await _storeContext.GetActiveStoreScopeConfigurationAsync();
             var unzerPaymentSettings = await _settingService.LoadSettingAsync<UnzerPaymentSettings>(storeId);
 
@@ -111,11 +109,9 @@ namespace Unzer.Plugin.Payments.Unzer.Controllers
         }
 
         [HttpPost]
+        [CheckPermission(StandardPermission.Configuration.MANAGE_PAYMENT_METHODS)]
         public async Task<IActionResult> Configure(ConfigurationModel model)
         {
-            if (!await _permissionService.AuthorizeAsync(StandardPermissionProvider.ManagePaymentMethods))
-                return AccessDeniedView();
-
             //if (!ModelState.IsValid)
             //    return await Configure();
 
