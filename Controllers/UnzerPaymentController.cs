@@ -74,7 +74,7 @@ namespace Unzer.Plugin.Payments.Unzer.Controllers
                 SelectedPaymentTypes= unzerPaymentSettings.SelectedPaymentTypes,
                 CurrencyCode = unzerPaymentSettings.CurrencyCode,
                 AdditionalFeePercentage = unzerPaymentSettings.AdditionalFeePercentage,
-                AutoCapture = Convert.ToInt32(unzerPaymentSettings.AutoCapture),
+                AutoCapture = unzerPaymentSettings.AutoCapture,
                 AutoCaptureOptions = await unzerPaymentSettings.AutoCapture.ToSelectListAsync(),
                 LogCallbackPostData = unzerPaymentSettings.LogCallbackPostData,
                 SkipPaymentInfo = unzerPaymentSettings.SkipPaymentInfo,
@@ -136,7 +136,7 @@ namespace Unzer.Plugin.Payments.Unzer.Controllers
             settings.CurrencyCode = model.CurrencyCode;
             settings.LogCallbackPostData = model.LogCallbackPostData;
             settings.SkipPaymentInfo = model.SkipPaymentInfo;            
-            settings.AutoCapture = (AutoCapture)model.AutoCapture;
+            settings.AutoCapture = model.AutoCapture;
             settings.AdditionalFeePercentage = model.AdditionalFeePercentage;
             settings.SendOrderConfirmOnAuthorized = model.SendOrderConfirmOnAuthorized;
                         
